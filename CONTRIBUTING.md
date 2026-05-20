@@ -51,6 +51,19 @@ Work should follow the governance phases in [docs/architecture/governance-board.
 
 Keep PRs single-purpose. Do not mix folder moves, CI rewrites, UI bug fixes, and release changes in one branch.
 
+## Ownership
+
+CODEOWNERS review should match the changed paths:
+
+- `.github/` for CI, release, labels, and governance.
+- `docs/architecture/` for architecture and release model.
+- `apps/vscode-extension/` for KiCad Studio extension work.
+- `packages/mcp-server/` for KiCad MCP Pro server and MCP Registry metadata.
+- `packages/mcp-npm/` for npm launcher work.
+- `examples/` for user-facing KiCad examples.
+
+Branch protection policy is documented in [docs/architecture/branch-protection.md](docs/architecture/branch-protection.md).
+
 ## Regression coverage
 
 Bug fixes require automated regression coverage when practical. Use unit tests, integration tests, fixture checks, contract tests, or visual/a11y checks depending on the changed surface. If automation is not practical, state the reason and include the manual verification command or artifact in the PR notes.

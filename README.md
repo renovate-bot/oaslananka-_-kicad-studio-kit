@@ -57,6 +57,10 @@ corepack pnpm run test:contract
 - [Testing strategy](docs/architecture/testing-strategy.md)
 - [Integration model](docs/integration/kicad-studio-mcp.md)
 
+## Examples
+
+- [LED Basic KiCad example](examples/led-basic/README.md)
+
 ## Publishing
 
 Publishing is handled by GitHub Actions workflows under `.github/workflows`. External setup for environments, marketplace secrets, and trusted publishers is documented in [docs/publishing.md](docs/publishing.md).

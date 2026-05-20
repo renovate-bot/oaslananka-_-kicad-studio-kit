@@ -42,4 +42,4 @@ corepack pnpm run check:boundaries
 
 The checker fails when a product source file imports or path-references another product workspace implementation. CI runs the same check in the metadata job.
 
-Ownership is declared in `.github/CODEOWNERS` for `.github/`, the extension, the MCP server, and the npm wrapper.
+Ownership is declared in `.github/CODEOWNERS` for `.github/`, architecture docs, examples, the extension, the MCP server, and the npm wrapper. Branch protection guidance is documented in [branch-protection.md](branch-protection.md).

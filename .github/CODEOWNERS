@@ -1,5 +1,7 @@
 * @oaslananka
 /.github/ @oaslananka
+/docs/architecture/ @oaslananka
 /apps/vscode-extension/ @oaslananka
 /packages/mcp-server/ @oaslananka
 /packages/mcp-npm/ @oaslananka
+/examples/ @oaslananka

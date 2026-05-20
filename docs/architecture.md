@@ -13,6 +13,7 @@ Detailed architecture documents:
 - [Repository structure](architecture/repo-structure.md)
 - [Product boundaries](architecture/product-boundaries.md)
 - [Release model](architecture/release-model.md)
+- [Branch protection](architecture/branch-protection.md)
 - [Testing strategy](architecture/testing-strategy.md)
 - [Migration phases](architecture/migration-phases.md)
 - [KiCad Studio and MCP integration](integration/kicad-studio-mcp.md)

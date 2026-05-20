@@ -21,6 +21,19 @@ Closes #
 
 <!-- Commands run + brief result -->
 
+## Protocol / MCP impact
+
+- [ ] Not applicable; reason:
+- [ ] Protocol schema updated
+- [ ] MCP server implementation updated
+- [ ] Extension MCP adapter updated
+- [ ] Contract tests updated
+- [ ] Compatibility matrix updated
+- [ ] Server-info/capabilities payload updated
+- [ ] Docs updated
+- [ ] Release notes considered for both products
+- [ ] Backward compatibility impact documented
+
 ## Automation evidence
 
 - [ ] Review-thread gate checked or not applicable
@@ -32,6 +45,7 @@ Closes #
 
 - [ ] Tests pass locally
 - [ ] Lint and typecheck pass
+- [ ] Bug fixes include automated regression coverage, or an explicit maintainer-approved exception
 - [ ] CHANGELOG entry (if user-visible)
 - [ ] Docs updated (if user-visible)
 - [ ] No new committed secrets or build artifacts
