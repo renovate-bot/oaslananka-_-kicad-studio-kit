@@ -104,7 +104,7 @@ Use this checklist before entering any external review form.
 - [ ] Run `SUBMISSION_MODE=1 pnpm run submission:check` and expect placeholder screenshots to fail before real captures.
 - [ ] Run `pnpm run docs:tools:check` after the generated catalog exists.
 - [ ] Run `pnpm run release:dry-run`.
-- [ ] Run `uv run --all-extras mkdocs build --strict`.
+- [ ] Run `uv run --all-extras properdocs build -f mkdocs.yml --strict`.
 
 ## Manual Submission Log
 
@@ -117,11 +117,10 @@ Use this checklist before entering any external review form.
 - [ ] Open a GitHub issue for any required repo change from a reviewer.
 - [ ] Close the issue only after the listing source of truth is updated.
 
-
 ## Final Gate
 
 - [ ] Do not submit while `pnpm run submission:check` fails.
-- [ ] Do not submit while `mkdocs build --strict` fails.
+- [ ] Do not submit while `properdocs build -f mkdocs.yml --strict` fails.
 - [ ] Do not submit while version metadata is out of sync.
 - [ ] Do not submit while screenshot placeholders are still present for final production submission.
 - [ ] Do not submit with any secret value in logs or screenshots.

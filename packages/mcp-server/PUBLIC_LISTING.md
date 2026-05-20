@@ -5,11 +5,11 @@ This file is intentionally maintained in the repository root so reviewers and ma
 
 ## Listing Targets
 
-| Target | Status | Submitted (UTC) | Approved (UTC) | Listing URL |
-|---|---|---|---|---|
-| Anthropic Connector Directory | Not submitted |  |  |  |
-| ChatGPT Apps | Not submitted |  |  |  |
-| OpenAI/MCP Registry | Not submitted |  |  |  |
+| Target                        | Status        | Submitted (UTC) | Approved (UTC) | Listing URL |
+| ----------------------------- | ------------- | --------------- | -------------- | ----------- |
+| Anthropic Connector Directory | Not submitted |                 |                |             |
+| ChatGPT Apps                  | Not submitted |                 |                |             |
+| OpenAI/MCP Registry           | Not submitted |                 |                |             |
 
 ## Pre-submission Gate
 
@@ -44,7 +44,7 @@ Replace the five screenshots in `docs/assets/screenshots/` with real 1920x1080 c
 ## Submission Log
 
 | Date (UTC) | Target | Version | Outcome | Notes |
-|---|---|---|---|---|
+| ---------- | ------ | ------- | ------- | ----- |
 
 ## Target Field Values
 
@@ -80,7 +80,7 @@ Replace the five screenshots in `docs/assets/screenshots/` with real 1920x1080 c
 - Re-run `pnpm run metadata:check` after any version bump.
 - Re-run `pnpm run submission:check` after any metadata update.
 - Re-run `pnpm run docs:tools:check` after any tool registration change.
-- Re-run `uv run --all-extras mkdocs build --strict` after any documentation update.
+- Re-run `uv run --all-extras properdocs build -f mkdocs.yml --strict` after any documentation update.
 - Re-sync `mcp.json` and `server.json` from `pyproject.toml` after version changes.
 - Publish a patch release if a directory requires metadata changes tied to package version.
 - Keep release notes concise and do not add reviewer-private details to public changelog entries.

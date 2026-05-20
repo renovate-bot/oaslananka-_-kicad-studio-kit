@@ -67,7 +67,7 @@ pnpm run mcp:manifest:check
 pnpm run assets:icons:check
 pnpm run submission:check
 pnpm run docs:tools:check
-uv run --all-extras mkdocs build --strict
+uv run --all-extras properdocs build -f mkdocs.yml --strict
 ```
 
 ## Container Verification Commands

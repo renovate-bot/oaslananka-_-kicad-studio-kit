@@ -5,3 +5,7 @@ KiCad Studio Kit is the canonical monorepo for the KiCad Studio VS Code extensio
 - Repository: https://github.com/oaslananka/kicad-studio-kit
 - Pages: https://oaslananka.github.io/kicad-studio-kit
 - Version baseline: `1.0.0`
+
+Core maintainer runbooks:
+
+- [Dependency lifecycle](dependency-lifecycle.md)

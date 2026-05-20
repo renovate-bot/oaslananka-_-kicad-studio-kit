@@ -8,22 +8,22 @@
 
 ## Final Acceptance Gate Results
 
-| # | Check | Result |
-|---|-------|--------|
-| 1 | Namespace regression | PASS |
-| 2 | Runner regression | PASS |
-| 3 | Legacy doc tokens | PASS |
-| 4 | Version metadata sync | PASS |
-| 5 | MCP manifest schema | PASS |
-| 6 | Icon assets | PASS |
-| 7 | Submission readiness | PASS |
-| 8 | Submission mode (informational) | placeholder screenshots present; expected pre-submission state |
-| 9 | Lint | PASS |
-| 10 | Typecheck | PASS |
-| 11 | Unit tests | PASS |
-| 12 | Docs build | PASS |
-| 13 | Tools reference drift | PASS |
-| 14 | Release dry-run | PASS |
+| #   | Check                           | Result                                                         |
+| --- | ------------------------------- | -------------------------------------------------------------- |
+| 1   | Namespace regression            | PASS                                                           |
+| 2   | Runner regression               | PASS                                                           |
+| 3   | Legacy doc tokens               | PASS                                                           |
+| 4   | Version metadata sync           | PASS                                                           |
+| 5   | MCP manifest schema             | PASS                                                           |
+| 6   | Icon assets                     | PASS                                                           |
+| 7   | Submission readiness            | PASS                                                           |
+| 8   | Submission mode (informational) | placeholder screenshots present; expected pre-submission state |
+| 9   | Lint                            | PASS                                                           |
+| 10  | Typecheck                       | PASS                                                           |
+| 11  | Unit tests                      | PASS                                                           |
+| 12  | Docs build                      | PASS                                                           |
+| 13  | Tools reference drift           | PASS                                                           |
+| 14  | Release dry-run                 | PASS                                                           |
 
 ## submission:check Output
 
@@ -50,13 +50,13 @@ $ uv run --all-extras python scripts/check_submission_readiness.py
 
 ## Additional Local Verification
 
-| Check | Result | Notes |
-|---|---|---|
-| `pnpm run check` | PASS | Full local check chain passed, including full pytest coverage at the restored 90 percent gate, Bandit, dependency audit, workflow lint/security, release dry-run, and build. |
-| `uv sync --extra dev --frozen` | PASS | Lockfile resolves with Pillow 12.2.0 for asset tooling. |
-| `uv run mkdocs build --strict` | PASS | Docs build completed under the same command used by the docs workflow. |
-| `lychee --verbose --no-progress README.md docs/**/*.md` | PASS | 117 links checked, 117 OK, 0 errors, 5 redirects. |
-| Demo media asset | PASS | `docs/assets/demo.gif` is committed and produced by the deterministic fallback path when `agg` is unavailable. |
+| Check                                                         | Result | Notes                                                                                                                                                                        |
+| ------------------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm run check`                                              | PASS   | Full local check chain passed, including full pytest coverage at the restored 90 percent gate, Bandit, dependency audit, workflow lint/security, release dry-run, and build. |
+| `uv sync --extra dev --frozen`                                | PASS   | Lockfile resolves with Pillow 12.2.0 for asset tooling.                                                                                                                      |
+| `uv run --all-extras properdocs build -f mkdocs.yml --strict` | PASS   | Docs build completed under the same command used by the docs workflow.                                                                                                       |
+| `lychee --verbose --no-progress README.md docs/**/*.md`       | PASS   | 117 links checked, 117 OK, 0 errors, 5 redirects.                                                                                                                            |
+| Demo media asset                                              | PASS   | `docs/assets/demo.gif` is committed and produced by the deterministic fallback path when `agg` is unavailable.                                                               |
 
 ## Next Steps for Maintainer
 

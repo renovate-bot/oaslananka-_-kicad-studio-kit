@@ -46,14 +46,14 @@ work. It favors small gates and measurable artifacts over large rewrites.
 
 ## Publishing surfaces
 
-| Surface | Purpose | Gate |
-|---|---|---|
-| PyPI | Python package distribution | release workflow, metadata sync, package smoke |
-| GitHub Releases | Source release, SBOM, provenance | release-please and attestation |
-| GHCR | CI/runtime images | Docker build + Trivy |
-| MCP registry | MCP discovery metadata | `metadata:check` |
-| Documentation site | User and operator docs | `mkdocs build --strict` + link check |
-| VS Code Marketplace | KiCad Studio integration | separate extension release gate |
+| Surface             | Purpose                          | Gate                                                   |
+| ------------------- | -------------------------------- | ------------------------------------------------------ |
+| PyPI                | Python package distribution      | release workflow, metadata sync, package smoke         |
+| GitHub Releases     | Source release, SBOM, provenance | release-please and attestation                         |
+| GHCR                | CI/runtime images                | Docker build + Trivy                                   |
+| MCP registry        | MCP discovery metadata           | `metadata:check`                                       |
+| Documentation site  | User and operator docs           | `properdocs build -f mkdocs.yml --strict` + link check |
+| VS Code Marketplace | KiCad Studio integration         | separate extension release gate                        |
 
 ## Non-goals
 

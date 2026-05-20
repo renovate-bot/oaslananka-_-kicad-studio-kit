@@ -28,7 +28,7 @@ jobs:
           version-file: packages/mcp-server/uv.toml
       - run: uv sync --all-extras --frozen
         working-directory: packages/mcp-server
-      - run: uv run --all-extras mkdocs build --site-dir ../../site
+      - run: uv run --all-extras properdocs build -f mkdocs.yml --site-dir ../../site
         working-directory: packages/mcp-server
       - run: cp docs/*.md site/
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d

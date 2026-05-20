@@ -80,7 +80,7 @@ Use this document for the ChatGPT Apps submission path.
 ## Review Controls
 
 - [ ] Run `pnpm run submission:check` before dashboard submission.
-- [ ] Run `uv run --all-extras mkdocs build --strict` before dashboard submission.
+- [ ] Run `uv run --all-extras properdocs build -f mkdocs.yml --strict` before dashboard submission.
 - [ ] Attach only screenshots that avoid private paths and hostnames.
 - [ ] Use fixture project evidence for all reviewer tests.
 - [ ] Do not upload secrets, logs with tokens, or private KiCad designs.
@@ -126,7 +126,7 @@ Use this document for the ChatGPT Apps submission path.
 - [ ] Confirm `pnpm run submission:check` passes before dashboard save.
 - [ ] Confirm `pnpm run assets:icons:check` passes before icon upload.
 - [ ] Confirm `pnpm run docs:tools:check` passes before tool evidence upload.
-- [ ] Confirm `uv run --all-extras mkdocs build --strict` passes before docs URL review.
+- [ ] Confirm `uv run --all-extras properdocs build -f mkdocs.yml --strict` passes before docs URL review.
 - [ ] Confirm `lychee --verbose --no-progress README.md docs/**/*.md` passes before link review.
 - [ ] Confirm `SUBMISSION_MODE=1 pnpm run submission:check` fails only for placeholders before final screenshots.
 - [ ] Confirm `SUBMISSION_MODE=1 pnpm run submission:check` passes after real screenshots are committed.

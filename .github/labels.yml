@@ -16,3 +16,33 @@
 - name: security
   color: "d73a4a"
   description: Security hardening or vulnerability handling
+- name: dependencies
+  color: "0366d6"
+  description: Dependency update pull requests
+- name: dependency-lifecycle
+  color: "0366d6"
+  description: Dependency update policy, canary tests, and version lifecycle management
+- name: compatibility
+  color: "1d76db"
+  description: External platform, version, and product compatibility lifecycle
+- name: product:repo
+  color: "bfdadc"
+  description: Repository-wide governance, CI, release, and documentation
+- name: product:vscode-extension
+  color: "5319e7"
+  description: KiCad Studio VS Code extension workspace
+- name: product:mcp-server
+  color: "0052cc"
+  description: KiCad MCP Pro Python server workspace
+- name: product:mcp-npm
+  color: "5319e7"
+  description: KiCad MCP Pro npm launcher workspace
+- name: risk:low
+  color: "c2e0c6"
+  description: Low-risk patch, lockfile, or docs-only dependency update
+- name: risk:medium
+  color: "fbca04"
+  description: Minor, build-tool, action, or container dependency update requiring normal review
+- name: risk:high
+  color: "b60205"
+  description: Major, runtime, protocol, security, or compatibility-sensitive dependency update

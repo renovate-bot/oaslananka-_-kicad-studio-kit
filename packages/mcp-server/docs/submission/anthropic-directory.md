@@ -138,7 +138,7 @@ Use this document when submitting KiCad MCP Pro to the Anthropic Connector Direc
 - [ ] Confirm placeholder screenshots are disclosed if this is a pre-submission packet.
 - [ ] Confirm `pnpm run submission:check` passes before the form is submitted.
 - [ ] Confirm `pnpm run docs:tools:check` passes after tool metadata changes.
-- [ ] Confirm `uv run --all-extras mkdocs build --strict` passes after docs edits.
+- [ ] Confirm `uv run --all-extras properdocs build -f mkdocs.yml --strict` passes after docs edits.
 - [ ] Confirm `lychee --verbose --no-progress README.md docs/**/*.md` passes after link edits.
 - [ ] Confirm `server.json` and `mcp.json` versions match the package version.
 - [ ] Confirm the PyPI package name remains `kicad-mcp-pro`.

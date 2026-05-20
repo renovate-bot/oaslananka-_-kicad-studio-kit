@@ -5,26 +5,123 @@
     "helpers:pinGitHubActionDigestsToSemver",
     ":dependencyDashboard",
     ":semanticCommits",
-    "group:allNonMajor"
+    ":configMigration"
   ],
   "timezone": "Europe/Istanbul",
-  "labels": ["dependencies"],
+  "labels": ["dependencies", "dependency-lifecycle"],
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "Dependency Dashboard",
+  "dependencyDashboardLabels": ["dependencies", "dependency-lifecycle"],
   "schedule": ["before 6am on monday"],
-  "prHourlyLimit": 3,
-  "prConcurrentLimit": 6,
+  "prHourlyLimit": 2,
+  "prConcurrentLimit": 5,
   "minimumReleaseAge": "3 days",
   "enabledManagers": ["npm", "github-actions", "dockerfile", "pep621"],
   "rangeStrategy": "pin",
+  "separateMajorMinor": true,
+  "separateMinorPatch": true,
+  "prCreation": "not-pending",
   "packageRules": [
     {
-      "matchManagers": ["npm"],
-      "groupName": "npm dependencies",
-      "automerge": false
+      "description": "Major updates require explicit dashboard approval and migration notes.",
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true,
+      "addLabels": ["risk:high"],
+      "prPriority": 5
     },
     {
+      "description": "Patch updates are the default low-risk maintenance lane.",
+      "matchUpdateTypes": ["patch"],
+      "addLabels": ["risk:low"],
+      "prPriority": 1
+    },
+    {
+      "description": "Minor updates need normal review and product-specific checks.",
+      "matchUpdateTypes": ["minor"],
+      "addLabels": ["risk:medium"],
+      "prPriority": 2
+    },
+    {
+      "description": "Keep root workspace orchestration updates separate from product runtime updates.",
+      "matchManagers": ["npm"],
+      "matchFileNames": ["package.json"],
+      "groupName": "root workspace tooling",
+      "semanticCommitScope": "root-tooling",
+      "addLabels": ["product:repo", "ci"]
+    },
+    {
+      "description": "Keep extension package updates scoped to the VS Code extension workspace.",
+      "matchManagers": ["npm"],
+      "matchFileNames": ["apps/vscode-extension/package.json"],
+      "groupName": "vscode extension npm dependencies",
+      "semanticCommitScope": "vscode-extension",
+      "addLabels": ["product:vscode-extension"]
+    },
+    {
+      "description": "Keep npm launcher wrapper updates separate from extension dependencies.",
+      "matchManagers": ["npm"],
+      "matchFileNames": ["packages/mcp-npm/package.json"],
+      "groupName": "mcp npm wrapper dependencies",
+      "semanticCommitScope": "mcp-npm",
+      "addLabels": ["product:mcp-npm"]
+    },
+    {
+      "description": "Runtime dependencies are reviewed separately from build and test tooling.",
+      "matchManagers": ["npm"],
+      "matchDepTypes": [
+        "dependencies",
+        "optionalDependencies",
+        "peerDependencies"
+      ],
+      "groupName": "node runtime dependencies",
+      "semanticCommitScope": "node-runtime",
+      "addLabels": ["risk:medium"]
+    },
+    {
+      "description": "Build and test dependencies are grouped together after runtime dependencies.",
+      "matchManagers": ["npm"],
+      "matchDepTypes": ["devDependencies"],
+      "groupName": "node build and test dependencies",
+      "semanticCommitScope": "node-dev",
+      "addLabels": ["ci"],
+      "prPriority": -1
+    },
+    {
+      "description": "Keep Python project updates scoped to the MCP server package.",
       "matchManagers": ["pep621"],
-      "groupName": "python dependencies",
-      "automerge": false
+      "groupName": "python mcp server dependencies",
+      "semanticCommitScope": "mcp-server",
+      "addLabels": ["product:mcp-server"]
+    },
+    {
+      "description": "Protocol and runtime-surface updates require compatibility review.",
+      "matchPackageNames": [
+        "mcp",
+        "@modelcontextprotocol/sdk",
+        "semver",
+        "@types/vscode"
+      ],
+      "dependencyDashboardApproval": true,
+      "addLabels": ["compatibility", "risk:high"],
+      "prPriority": 6
+    },
+    {
+      "description": "GitHub Actions updates are isolated from product runtime updates.",
+      "matchManagers": ["github-actions"],
+      "groupName": "github actions",
+      "semanticCommitScope": "github-actions",
+      "addLabels": ["ci", "risk:medium"],
+      "dependencyDashboardApproval": true,
+      "prPriority": 3
+    },
+    {
+      "description": "Container image updates affect MCP runtime packaging and require explicit review.",
+      "matchManagers": ["dockerfile"],
+      "groupName": "container base images",
+      "semanticCommitScope": "containers",
+      "addLabels": ["product:mcp-server", "risk:medium"],
+      "dependencyDashboardApproval": true,
+      "prPriority": 3
     },
     {
       "matchPackageNames": ["@types/vscode"],
@@ -35,20 +132,19 @@
       "matchPackageNames": ["@types/node"],
       "allowedVersions": "<25",
       "description": "Keep Node typings aligned with the Node 24 runtime declared by the workspace."
-    },
-    {
-      "matchManagers": ["github-actions"],
-      "groupName": "github-actions",
-      "automerge": false
     }
   ],
   "vulnerabilityAlerts": {
     "enabled": true,
-    "labels": ["security", "dependencies"]
+    "labels": ["security", "dependencies", "dependency-lifecycle", "risk:high"],
+    "prCreation": "immediate",
+    "dependencyDashboardApproval": false,
+    "vulnerabilityFixStrategy": "lowest"
   },
   "osvVulnerabilityAlerts": true,
   "lockFileMaintenance": {
     "enabled": true,
-    "schedule": ["before 6am on monday"]
+    "schedule": ["before 6am on monday"],
+    "addLabels": ["risk:low"]
   }
 }
