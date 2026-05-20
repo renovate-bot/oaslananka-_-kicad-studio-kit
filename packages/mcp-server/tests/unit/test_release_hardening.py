@@ -20,6 +20,27 @@ from tests.conftest import call_tool_text
 EXPOSED_HOST = "0." + "0.0.0"
 STRONG_TOKEN = "".join(("0123456789abcdef", "0123456789ABCDEF"))
 ROTATED_STRONG_TOKEN = "".join(("fedcba9876543210", "FEDCBA9876543210"))
+HTTP_HEADERS = {
+    "Accept": "application/json, text/event-stream",
+    "Content-Type": "application/json",
+}
+
+
+def _initialize_request() -> dict[str, object]:
+    return {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+            "protocolVersion": "2025-06-18",
+            "capabilities": {},
+            "clientInfo": {"name": "compat-test", "version": "1.0.0"},
+        },
+    }
+
+
+def _tools_list_request(request_id: int = 2) -> dict[str, object]:
+    return {"jsonrpc": "2.0", "id": request_id, "method": "tools/list", "params": {}}
 
 
 def test_stateful_http_config_controls_fastmcp_setting(sample_project: Path) -> None:
@@ -32,6 +53,74 @@ def test_stateful_http_config_controls_fastmcp_setting(sample_project: Path) -> 
     cfg = get_config()
     cfg.stateful_http = False
     assert build_server("minimal").settings.stateless_http is True
+
+
+def test_stateless_streamable_http_allows_tools_list_without_session_header(
+    sample_project: Path,
+) -> None:
+    _ = sample_project
+    cfg = get_config()
+    cfg.transport = "streamable-http"
+    cfg.stateful_http = False
+    server = build_server("minimal")
+
+    with TestClient(server.streamable_http_app(), base_url="http://127.0.0.1:3334") as client:
+        initialized = client.post("/mcp", headers=HTTP_HEADERS, json=_initialize_request())
+        listed = client.post(
+            "/mcp",
+            headers={**HTTP_HEADERS, "MCP-Protocol-Version": "2025-06-18"},
+            json=_tools_list_request(),
+        )
+
+    assert initialized.status_code == 200
+    assert "mcp-session-id" not in initialized.headers
+    assert listed.status_code == 200
+    assert listed.json()["result"]["tools"]
+
+
+def test_stateful_streamable_http_requires_session_header_after_initialize(
+    sample_project: Path,
+) -> None:
+    _ = sample_project
+    cfg = get_config()
+    cfg.transport = "streamable-http"
+    cfg.stateful_http = True
+    server = build_server("minimal")
+
+    with TestClient(server.streamable_http_app(), base_url="http://127.0.0.1:3334") as client:
+        initialized = client.post("/mcp", headers=HTTP_HEADERS, json=_initialize_request())
+        session_id = initialized.headers.get("mcp-session-id")
+        missing_session = client.post(
+            "/mcp",
+            headers={**HTTP_HEADERS, "MCP-Protocol-Version": "2025-06-18"},
+            json=_tools_list_request(),
+        )
+        accepted_notification = client.post(
+            "/mcp",
+            headers={
+                **HTTP_HEADERS,
+                "MCP-Protocol-Version": "2025-06-18",
+                "Mcp-Session-Id": str(session_id),
+            },
+            json={"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}},
+        )
+        listed = client.post(
+            "/mcp",
+            headers={
+                **HTTP_HEADERS,
+                "MCP-Protocol-Version": "2025-06-18",
+                "Mcp-Session-Id": str(session_id),
+            },
+            json=_tools_list_request(3),
+        )
+
+    assert initialized.status_code == 200
+    assert session_id
+    assert missing_session.status_code == 400
+    assert "Missing session ID" in missing_session.text
+    assert accepted_notification.status_code == 202
+    assert listed.status_code == 200
+    assert listed.json()["result"]["tools"]
 
 
 @pytest.mark.anyio

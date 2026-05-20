@@ -602,6 +602,271 @@ def _board_is_open() -> bool:
     return True
 
 
+def _first_error_line(error: BaseException) -> str:
+    return str(error).splitlines()[0] if str(error).splitlines() else type(error).__name__
+
+
+def _configured_board_file() -> Path | None:
+    cfg = get_config()
+    candidates: list[Path] = []
+    if cfg.pcb_file is not None:
+        candidates.append(cfg.pcb_file)
+    if cfg.project_file is not None:
+        candidates.append(cfg.project_file.with_suffix(".kicad_pcb"))
+    if cfg.project_dir is not None:
+        candidates.extend(sorted(cfg.project_dir.glob("*.kicad_pcb")))
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0] if candidates else None
+
+
+def _ipc_endpoint_label() -> str:
+    socket_path = get_config().kicad_socket_path
+    return str(socket_path) if socket_path is not None else "auto-discovery"
+
+
+def _format_file_backed_diagnostics(
+    ipc_error: BaseException,
+    *,
+    board_file: Path | None,
+    fallback_status: str,
+) -> list[str]:
+    cfg = get_config()
+    project_path = cfg.project_dir if cfg.project_dir is not None else "(not configured)"
+    return [
+        "Diagnostics:",
+        f"- IPC endpoint: {_ipc_endpoint_label()}",
+        f"- KiCad board from IPC: unavailable ({_first_error_line(ipc_error)})",
+        f"- Active project path: {project_path}",
+        f"- Board file: {board_file if board_file is not None else '(not configured)'}",
+        f"- Fallback status: {fallback_status}",
+    ]
+
+
+def _load_file_backed_board(ipc_error: BaseException) -> tuple[Path, str, list[str]] | str:
+    board_file = _configured_board_file()
+    if board_file is None:
+        return "\n".join(
+            [
+                "Live PCB context is unavailable and no configured .kicad_pcb file was found.",
+                *_format_file_backed_diagnostics(
+                    ipc_error,
+                    board_file=None,
+                    fallback_status="unavailable: no configured board file",
+                ),
+            ]
+        )
+    if not board_file.exists():
+        return "\n".join(
+            [
+                "Live PCB context is unavailable and the configured .kicad_pcb file is missing.",
+                *_format_file_backed_diagnostics(
+                    ipc_error,
+                    board_file=board_file,
+                    fallback_status="unavailable: board file does not exist",
+                ),
+            ]
+        )
+    content = _normalize_board_content(board_file.read_text(encoding="utf-8", errors="ignore"))
+    diagnostics = _format_file_backed_diagnostics(
+        ipc_error,
+        board_file=board_file,
+        fallback_status="using file-backed .kicad_pcb parser",
+    )
+    return board_file, content, diagnostics
+
+
+def _board_file_nets(content: str) -> dict[str, str]:
+    nets: dict[str, str] = {}
+    for match in re.finditer(rf"(?m)^\s*\(net\s+(\d+)\s+{STRING_PATTERN}\)", content):
+        if match.group(2):
+            nets[match.group(1)] = match.group(2)
+    for footprint in _parse_board_footprint_blocks(content).values():
+        for net_name in cast(list[str], footprint.get("net_names", [])):
+            if net_name and net_name not in nets.values():
+                nets[str(len(nets) + 1)] = net_name
+    return nets
+
+
+def _board_file_segments(content: str) -> list[dict[str, object]]:
+    net_names = _board_file_nets(content)
+    segments: list[dict[str, object]] = []
+    for index, block in enumerate(_iter_blocks(content, "segment"), start=1):
+        start = re.search(rf"\(start\s+({FLOAT_PATTERN})\s+({FLOAT_PATTERN})\)", block)
+        end = re.search(rf"\(end\s+({FLOAT_PATTERN})\s+({FLOAT_PATTERN})\)", block)
+        layer = re.search(r'\(layer\s+"([^"]+)"\)', block)
+        width = re.search(rf"\(width\s+({FLOAT_PATTERN})\)", block)
+        net = re.search(r"\(net\s+(\d+)\)", block)
+        segments.append(
+            {
+                "index": index,
+                "start": (float(start.group(1)), float(start.group(2))) if start else None,
+                "end": (float(end.group(1)), float(end.group(2))) if end else None,
+                "layer": layer.group(1) if layer else "(unknown)",
+                "width_mm": float(width.group(1)) if width else None,
+                "net": net_names.get(net.group(1), f"net-{net.group(1)}")
+                if net is not None
+                else "(none)",
+            }
+        )
+    return segments
+
+
+def _matches_file_layer_filter(layer_name: str, filter_layer: str) -> bool:
+    if not filter_layer:
+        return True
+    return resolve_layer_name(filter_layer) == resolve_layer_name(layer_name)
+
+
+def _file_backed_board_summary(ipc_error: BaseException) -> str:
+    loaded = _load_file_backed_board(ipc_error)
+    if isinstance(loaded, str):
+        return loaded
+    board_file, content, diagnostics = loaded
+    footprints = _parse_board_footprint_blocks(content)
+    tracks = _board_file_segments(content)
+    vias = list(_iter_blocks(content, "via"))
+    zones = list(_iter_blocks(content, "zone"))
+    nets = _board_file_nets(content)
+    shapes = re.findall(r"(?m)^\s*\(gr_[a-zA-Z_]+", content)
+    return "\n".join(
+        [
+            "Board summary (file-backed fallback):",
+            f"- Board file: {board_file}",
+            f"- Tracks: {len(tracks)}",
+            f"- Vias: {len(vias)}",
+            f"- Footprints: {len(footprints)}",
+            f"- Zones: {len(zones)}",
+            f"- Nets: {len(nets)}",
+            f"- Shapes: {len(shapes)}",
+            *diagnostics,
+        ]
+    )
+
+
+def _file_backed_tracks(
+    ipc_error: BaseException,
+    *,
+    page: int,
+    page_size: int,
+    filter_layer: str,
+    filter_net: str,
+) -> str:
+    loaded = _load_file_backed_board(ipc_error)
+    if isinstance(loaded, str):
+        return loaded
+    _, content, diagnostics = loaded
+    all_tracks = [
+        track
+        for track in _board_file_segments(content)
+        if _matches_file_layer_filter(str(track["layer"]), filter_layer)
+        and (not filter_net or str(track["net"]).casefold() == filter_net.casefold())
+    ]
+    tracks, total, page_count = _paginate(all_tracks, page=page, page_size=page_size)
+    if total == 0:
+        message = (
+            "No tracks match the supplied filters in the file-backed fallback."
+            if filter_layer or filter_net
+            else "No tracks are present in the file-backed fallback."
+        )
+        return "\n".join([message, *diagnostics])
+    if not tracks:
+        return "\n".join(
+            [
+                f"Track page {page} is out of range for file-backed fallback. "
+                f"Available pages: 1-{page_count}.",
+                *diagnostics,
+            ]
+        )
+
+    lines = [
+        f"Tracks (file-backed fallback, {total} total):",
+        f"- Page {page}/{page_count} | Showing {len(tracks)}",
+    ]
+    for index, track in enumerate(tracks, start=1):
+        start = cast(tuple[float, float] | None, track["start"])
+        end = cast(tuple[float, float] | None, track["end"])
+        start_text = f"({start[0]:.2f}, {start[1]:.2f})" if start else "(unknown)"
+        end_text = f"({end[0]:.2f}, {end[1]:.2f})" if end else "(unknown)"
+        width = track["width_mm"]
+        width_text = f"{float(width):.3f} mm" if isinstance(width, int | float) else "(unknown)"
+        lines.append(
+            f"{index}. {start_text} -> {end_text} mm "
+            f"layer={track['layer']} width={width_text} net={track['net']} "
+            f"id=file:segment:{track['index']}"
+        )
+    lines.extend(diagnostics)
+    return "\n".join(lines)
+
+
+def _file_backed_footprints(
+    ipc_error: BaseException,
+    *,
+    page: int,
+    page_size: int,
+    filter_layer: str,
+) -> str:
+    loaded = _load_file_backed_board(ipc_error)
+    if isinstance(loaded, str):
+        return loaded
+    _, content, diagnostics = loaded
+    all_footprints = [
+        (reference, entry)
+        for reference, entry in sorted(_parse_board_footprint_blocks(content).items())
+        if _matches_file_layer_filter(str(entry.get("layer_name", "F.Cu")), filter_layer)
+    ]
+    footprints, total, page_count = _paginate(all_footprints, page=page, page_size=page_size)
+    if total == 0:
+        message = (
+            "No footprints match the supplied layer filter in the file-backed fallback."
+            if filter_layer
+            else "No footprints are present in the file-backed fallback."
+        )
+        return "\n".join([message, *diagnostics])
+    if not footprints:
+        return "\n".join(
+            [
+                f"Footprint page {page} is out of range for file-backed fallback. "
+                f"Available pages: 1-{page_count}.",
+                *diagnostics,
+            ]
+        )
+
+    lines = [
+        f"Footprints (file-backed fallback, {total} total):",
+        f"- Page {page}/{page_count} | Showing {len(footprints)}",
+    ]
+    for reference, entry in footprints:
+        x_mm = entry.get("x_mm")
+        y_mm = entry.get("y_mm")
+        position = (
+            f"({float(x_mm):.2f}, {float(y_mm):.2f})"
+            if isinstance(x_mm, int | float) and isinstance(y_mm, int | float)
+            else "(unknown)"
+        )
+        lines.append(
+            f"- {reference} ({entry.get('value', '')}) @ {position} mm "
+            f"layer={entry.get('layer_name', 'F.Cu')} id=file:footprint:{reference}"
+        )
+    lines.extend(diagnostics)
+    return "\n".join(lines)
+
+
+def _file_backed_nets(ipc_error: BaseException) -> str:
+    loaded = _load_file_backed_board(ipc_error)
+    if isinstance(loaded, str):
+        return loaded
+    _, content, diagnostics = loaded
+    nets = sorted(set(_board_file_nets(content).values()))
+    if not nets:
+        return "\n".join(["No nets are present in the file-backed fallback.", *diagnostics])
+    lines = [f"Nets (file-backed fallback, {len(nets)} total):"]
+    lines.extend(f"- {net or '(unnamed)'}" for net in nets)
+    lines.extend(diagnostics)
+    return "\n".join(lines)
+
+
 def _reload_board_after_file_sync() -> str:
     try:
         board = get_board()
@@ -1678,11 +1943,14 @@ def register(mcp: FastMCP) -> None:
     """Register PCB tools."""
 
     @mcp.tool()
-    @requires_kicad_running
+    @headless_compatible
     @ttl_cache(ttl_seconds=5)
     def pcb_get_board_summary() -> str:
         """Summarize the current board."""
-        board = get_board()
+        try:
+            board = get_board()
+        except (KiCadConnectionError, OSError) as exc:
+            return _file_backed_board_summary(exc)
         tracks = board.get_tracks()
         footprints = board.get_footprints()
         vias = board.get_vias()
@@ -1702,7 +1970,7 @@ def register(mcp: FastMCP) -> None:
         )
 
     @mcp.tool()
-    @requires_kicad_running
+    @headless_compatible
     def pcb_get_tracks(
         page: int = 1,
         page_size: int = 100,
@@ -1710,12 +1978,21 @@ def register(mcp: FastMCP) -> None:
         filter_net: str = "",
     ) -> str:
         """List board tracks."""
-        all_tracks = [
-            track
-            for track in cast(Iterable[Track], get_board().get_tracks())
-            if _matches_layer_filter(track.layer, filter_layer)
-            and (not filter_net or (track.net.name or "").casefold() == filter_net.casefold())
-        ]
+        try:
+            all_tracks = [
+                track
+                for track in cast(Iterable[Track], get_board().get_tracks())
+                if _matches_layer_filter(track.layer, filter_layer)
+                and (not filter_net or (track.net.name or "").casefold() == filter_net.casefold())
+            ]
+        except (KiCadConnectionError, OSError) as exc:
+            return _file_backed_tracks(
+                exc,
+                page=page,
+                page_size=page_size,
+                filter_layer=filter_layer,
+                filter_net=filter_net,
+            )
         tracks, total, page_count = _paginate(all_tracks, page=page, page_size=page_size)
         if total == 0:
             if filter_layer or filter_net:
@@ -1759,18 +2036,26 @@ def register(mcp: FastMCP) -> None:
         return "\n".join(lines)
 
     @mcp.tool()
-    @requires_kicad_running
+    @headless_compatible
     def pcb_get_footprints(
         page: int = 1,
         page_size: int = 50,
         filter_layer: str = "",
     ) -> str:
         """List board footprints."""
-        all_footprints = [
-            footprint
-            for footprint in cast(Iterable[_FootprintLike], get_board().get_footprints())
-            if _matches_layer_filter(footprint.layer, filter_layer)
-        ]
+        try:
+            all_footprints = [
+                footprint
+                for footprint in cast(Iterable[_FootprintLike], get_board().get_footprints())
+                if _matches_layer_filter(footprint.layer, filter_layer)
+            ]
+        except (KiCadConnectionError, OSError) as exc:
+            return _file_backed_footprints(
+                exc,
+                page=page,
+                page_size=page_size,
+                filter_layer=filter_layer,
+            )
         footprints, total, page_count = _paginate(all_footprints, page=page, page_size=page_size)
         if total == 0:
             if filter_layer:
@@ -1809,10 +2094,13 @@ def register(mcp: FastMCP) -> None:
         return json.dumps({"reference": reference, "layers": layers}, indent=2)
 
     @mcp.tool()
-    @requires_kicad_running
+    @headless_compatible
     def pcb_get_nets() -> str:
         """List all board nets."""
-        nets, total = _limit(cast(Iterable[Net], get_board().get_nets(netclass_filter=None)))
+        try:
+            nets, total = _limit(cast(Iterable[Net], get_board().get_nets(netclass_filter=None)))
+        except (KiCadConnectionError, OSError) as exc:
+            return _file_backed_nets(exc)
         if not nets:
             return "No nets are present on the active board."
         lines = [f"Nets ({total} total):"]

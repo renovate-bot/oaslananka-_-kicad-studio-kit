@@ -105,7 +105,7 @@ async def test_project_resources_prompts_and_library_surface(
     assert "route_autoroute_freerouting [HEADLESS / REQUIRES:freerouting]" in routing_tools
     assert "route_differential_pair" in routing_tools
     assert "route_tune_length" in routing_tools
-    assert "pcb_get_tracks [REQUIRES_KICAD]" in pcb_read_tools
+    assert "pcb_get_tracks [HEADLESS]" in pcb_read_tools
     assert "sim_run_operating_point" in simulation_tools
     assert "sim_check_stability" in simulation_tools
     assert "si_calculate_trace_impedance" in si_tools

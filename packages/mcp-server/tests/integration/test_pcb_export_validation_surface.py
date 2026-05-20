@@ -9,6 +9,7 @@ import pytest
 from kipy.proto.board.board_types_pb2 import BoardLayer, ViaType
 
 from kicad_mcp.config import get_config
+from kicad_mcp.connection import KiCadConnectionError
 from kicad_mcp.discovery import CliCapabilities, get_cli_capabilities
 from kicad_mcp.server import build_server
 from kicad_mcp.tools.export import LOW_LEVEL_EXPORT_NOTICE
@@ -436,6 +437,132 @@ async def test_pcb_and_routing_surface(
     assert "Length-tuning rule" in joined_routing
     assert "Differential-pair length rules updated" in joined_routing
     assert (sample_project / "demo.kicad_dru").read_text(encoding="utf-8").count("(rule ") >= 4
+
+
+@pytest.mark.anyio
+async def test_pcb_read_tools_fall_back_to_configured_board_file(
+    sample_project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (sample_project / "demo.kicad_pcb").write_text(
+        (
+            "(kicad_pcb\n"
+            "\t(version 20250216)\n"
+            '\t(generator "pytest")\n'
+            '\t(net 0 "")\n'
+            '\t(net 1 "/VIN")\n'
+            '\t(net 2 "/LED_A")\n'
+            '\t(footprint "Resistor_SMD:R_0805"\n'
+            '\t\t(layer "F.Cu")\n'
+            "\t\t(at 10 10 0)\n"
+            '\t\t(property "Reference" "R1" (at 0 0 0))\n'
+            '\t\t(property "Value" "1k" (at 0 0 0))\n'
+            '\t\t(pad "1" smd rect (at -1 0) (size 1 1) (layers "F.Cu") (net 1 "/VIN"))\n'
+            '\t\t(pad "2" smd rect (at 1 0) (size 1 1) (layers "F.Cu") (net 2 "/LED_A"))\n'
+            "\t)\n"
+            '\t(segment (start 10 10) (end 20 10) (width 0.25) (layer "F.Cu") (net 1))\n'
+            ")\n"
+        ),
+        encoding="utf-8",
+    )
+    server = build_server("pcb")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+
+    def raise_no_live_board() -> object:
+        raise KiCadConnectionError("KiCad is connected but no board is currently open.")
+
+    monkeypatch.setattr("kicad_mcp.tools.pcb.get_board", raise_no_live_board)
+
+    summary = await call_tool_text(server, "pcb_get_board_summary", {})
+    tracks = await call_tool_text(server, "pcb_get_tracks", {})
+    tracks_filtered_out = await call_tool_text(server, "pcb_get_tracks", {"filter_net": "GND"})
+    tracks_out_of_range = await call_tool_text(
+        server, "pcb_get_tracks", {"page": 2, "page_size": 1}
+    )
+    footprints = await call_tool_text(server, "pcb_get_footprints", {})
+    footprints_filtered_out = await call_tool_text(
+        server, "pcb_get_footprints", {"filter_layer": "B_Cu"}
+    )
+    footprints_out_of_range = await call_tool_text(
+        server, "pcb_get_footprints", {"page": 2, "page_size": 1}
+    )
+    nets = await call_tool_text(server, "pcb_get_nets", {})
+
+    for text in (
+        summary,
+        tracks,
+        tracks_filtered_out,
+        tracks_out_of_range,
+        footprints,
+        footprints_filtered_out,
+        footprints_out_of_range,
+        nets,
+    ):
+        assert "file-backed fallback" in text
+        assert "Diagnostics:" in text
+        assert "IPC endpoint:" in text
+        assert f"Active project path: {sample_project}" in text
+        assert f"Board file: {sample_project / 'demo.kicad_pcb'}" in text
+        assert "Fallback status: using file-backed .kicad_pcb parser" in text
+
+    assert "- Tracks: 1" in summary
+    assert "- Footprints: 1" in summary
+    assert "- Nets: 2" in summary
+    assert "Tracks (file-backed fallback, 1 total)" in tracks
+    assert "net=/VIN" in tracks
+    assert "No tracks match the supplied filters" in tracks_filtered_out
+    assert "Track page 2 is out of range" in tracks_out_of_range
+    assert "R1 (1k)" in footprints
+    assert "No footprints match the supplied layer filter" in footprints_filtered_out
+    assert "Footprint page 2 is out of range" in footprints_out_of_range
+    assert "- /VIN" in nets
+    assert "- /LED_A" in nets
+
+
+@pytest.mark.anyio
+async def test_pcb_file_fallback_reports_empty_and_missing_board_states(
+    sample_project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    server = build_server("pcb")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+
+    def raise_no_live_board() -> object:
+        raise KiCadConnectionError("KiCad IPC is reachable but has no board.")
+
+    monkeypatch.setattr("kicad_mcp.tools.pcb.get_board", raise_no_live_board)
+
+    empty_tracks = await call_tool_text(server, "pcb_get_tracks", {})
+    empty_footprints = await call_tool_text(server, "pcb_get_footprints", {})
+    empty_nets = await call_tool_text(server, "pcb_get_nets", {})
+    (sample_project / "demo.kicad_pcb").unlink()
+    missing_summary = await call_tool_text(server, "pcb_get_board_summary", {})
+
+    assert "No tracks are present in the file-backed fallback" in empty_tracks
+    assert "No footprints are present in the file-backed fallback" in empty_footprints
+    assert "No nets are present in the file-backed fallback" in empty_nets
+    assert "configured .kicad_pcb file is missing" in missing_summary
+    assert "Fallback status: unavailable: board file does not exist" in missing_summary
+
+
+@pytest.mark.anyio
+async def test_pcb_file_fallback_reports_missing_board_configuration(
+    fake_cli: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _ = fake_cli
+    server = build_server("pcb")
+
+    def raise_no_live_board() -> object:
+        raise KiCadConnectionError("KiCad IPC is reachable but has no board.")
+
+    monkeypatch.setattr("kicad_mcp.tools.pcb.get_board", raise_no_live_board)
+
+    summary = await call_tool_text(server, "pcb_get_board_summary", {})
+
+    assert "no configured .kicad_pcb file was found" in summary
+    assert "Board file: (not configured)" in summary
+    assert "Fallback status: unavailable: no configured board file" in summary
 
 
 @pytest.mark.anyio

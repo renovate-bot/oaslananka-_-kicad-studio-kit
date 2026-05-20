@@ -15,6 +15,12 @@ The server can run in `streamable-http` mode in addition to `stdio`.
 
 The default HTTP port is `3334`. For KiCad Studio local bridge setups, `27185` is a good convention if you want a dedicated port.
 
+Stateless mode is the ChatGPT-compatible default. In this mode the initialize
+response does not include `Mcp-Session-Id`, and follow-up requests such as
+`tools/list` must work without a session header. Set `KICAD_MCP_STATEFUL_HTTP=true`
+only for clients that preserve `Mcp-Session-Id` from the initialize response and
+send it on subsequent Streamable HTTP requests.
+
 ## Environment Variables
 
 - `KICAD_MCP_TRANSPORT=http`

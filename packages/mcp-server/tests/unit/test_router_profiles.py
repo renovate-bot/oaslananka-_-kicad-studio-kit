@@ -81,7 +81,7 @@ async def test_tool_category_output_shows_runtime_metadata() -> None:
     )
 
     assert "route_autoroute_freerouting [HEADLESS / REQUIRES:freerouting]" in routing
-    assert "pcb_get_tracks [REQUIRES_KICAD]" in pcb_read
+    assert "pcb_get_tracks [HEADLESS]" in pcb_read
     assert "export_manufacturing_package [HEADLESS]" in release_export
     assert "get_board_stats [HEADLESS]" in release_export
 
