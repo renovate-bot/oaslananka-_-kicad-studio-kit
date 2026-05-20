@@ -2,6 +2,14 @@
 
 KiCad Studio Kit is the canonical monorepo for the KiCad Studio VS Code extension, the KiCad MCP Pro Python server, and the npm launcher wrapper.
 
+## Architecture
+
+- [Repository structure](architecture/repo-structure.md)
+- [Product boundaries](architecture/product-boundaries.md)
+- [Release model](architecture/release-model.md)
+- [Testing strategy](architecture/testing-strategy.md)
+- [KiCad Studio and MCP integration](integration/kicad-studio-mcp.md)
+
 - Repository: https://github.com/oaslananka/kicad-studio-kit
 - Pages: https://oaslananka.github.io/kicad-studio-kit
 - Version baseline: `1.0.0`

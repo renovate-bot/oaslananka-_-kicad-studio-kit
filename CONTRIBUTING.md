@@ -6,8 +6,51 @@ Before opening a pull request, run:
 
 ```bash
 corepack pnpm run check:forbidden-refs
+corepack pnpm run check:boundaries
 corepack pnpm run check:version
 corepack pnpm run check:compatibility
 ```
 
+For extension-only work:
+
+```bash
+corepack pnpm run check:kicad-studio
+corepack pnpm run test:kicad-studio
+corepack pnpm run build:kicad-studio
+corepack pnpm run package:kicad-studio
+```
+
+For MCP server work:
+
+```bash
+uv sync --all-extras --frozen --project packages/mcp-server
+corepack pnpm run check:kicad-mcp-pro
+corepack pnpm run test:kicad-mcp-pro
+corepack pnpm run build:kicad-mcp-pro
+corepack pnpm run package:kicad-mcp-pro
+```
+
+For protocol or integration work:
+
+```bash
+corepack pnpm run test:contract
+corepack pnpm run test:fixtures
+```
+
 Report KiCad, VS Code, MCP protocol, dependency, or release-tool compatibility failures with the compatibility regression issue form. Include old and new versions, the failing command or workflow, and any canary run link.
+
+## Issue order
+
+Work should follow the governance phases in [docs/architecture/governance-board.md](docs/architecture/governance-board.md):
+
+1. Monorepo foundation and product boundaries.
+2. Shared tests, fixtures, schemas, and contract infrastructure.
+3. MCP compatibility foundation.
+4. UI/UX and known product bugs.
+5. Release, dependency, and supply-chain hardening.
+
+Keep PRs single-purpose. Do not mix folder moves, CI rewrites, UI bug fixes, and release changes in one branch.
+
+## Regression coverage
+
+Bug fixes require automated regression coverage when practical. Use unit tests, integration tests, fixture checks, contract tests, or visual/a11y checks depending on the changed surface. If automation is not practical, state the reason and include the manual verification command or artifact in the PR notes.

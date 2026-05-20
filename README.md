@@ -40,6 +40,23 @@ npm pack --dry-run
 Pop-Location
 ```
 
+Product-scoped entrypoints are available from the root:
+
+```powershell
+corepack pnpm run check:kicad-studio
+corepack pnpm run check:kicad-mcp-pro
+corepack pnpm run check:mcp-npm
+corepack pnpm run test:contract
+```
+
+## Architecture
+
+- [Repository structure](docs/architecture/repo-structure.md)
+- [Product boundaries](docs/architecture/product-boundaries.md)
+- [Release model](docs/architecture/release-model.md)
+- [Testing strategy](docs/architecture/testing-strategy.md)
+- [Integration model](docs/integration/kicad-studio-mcp.md)
+
 ## Publishing
 
 Publishing is handled by GitHub Actions workflows under `.github/workflows`. External setup for environments, marketplace secrets, and trusted publishers is documented in [docs/publishing.md](docs/publishing.md).

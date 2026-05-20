@@ -1,0 +1,45 @@
+# Product Boundaries
+
+The monorepo has three product workspaces, but the products must stay decoupled at source level.
+
+## Allowed dependencies
+
+| From                    | May depend on                                                              |
+| ----------------------- | -------------------------------------------------------------------------- |
+| `apps/vscode-extension` | npm dependencies, VS Code APIs, KiCad CLI process calls, MCP protocol data |
+| `packages/mcp-server`   | Python dependencies, KiCad Python/CLI integrations, MCP protocol data      |
+| `packages/mcp-npm`      | Node standard library and the published Python package name                |
+| future shared packages  | external dependencies and other shared packages only                       |
+
+## Forbidden dependencies
+
+- The extension must not import Python server modules such as `kicad_mcp.*`.
+- The MCP server must not import VS Code extension source or npm wrapper implementation.
+- The npm launcher must not import extension source or Python server source.
+- No product may reach into another product with relative imports.
+- `packages/*` shared packages must not depend on `apps/*`.
+
+## Integration rule
+
+The products integrate through MCP protocol and metadata:
+
+- `compatibility.yaml`
+- `apps/vscode-extension/src/mcp/compatibilityMatrix.ts`
+- `packages/mcp-server/src/kicad_mcp/compatibility.py`
+- `packages/mcp-server/mcp.json`
+- `packages/mcp-server/server.json`
+- contract and compatibility checks
+
+Protocol changes must update both product surfaces and the compatibility validation scripts.
+
+## Enforcement
+
+Run the boundary checker from the repository root:
+
+```bash
+corepack pnpm run check:boundaries
+```
+
+The checker fails when a product source file imports or path-references another product workspace implementation. CI runs the same check in the metadata job.
+
+Ownership is declared in `.github/CODEOWNERS` for `.github/`, the extension, the MCP server, and the npm wrapper.
