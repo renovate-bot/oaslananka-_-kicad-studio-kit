@@ -7,12 +7,15 @@ import { SExpressionParser, type SNode } from '../language/sExpressionParser';
 import { KiCadCliRunner } from '../cli/kicadCliRunner';
 import { Logger } from '../utils/logger';
 import { createNonce } from '../utils/nonce';
+import { findSiblingProjectFile } from '../utils/pathUtils';
 
 export class NetlistViewProvider
   implements vscode.WebviewViewProvider, vscode.Disposable
 {
   private readonly disposables: vscode.Disposable[] = [];
   private view?: vscode.WebviewView;
+  private _refreshTimer: NodeJS.Timeout | undefined = undefined;
+  private _lastFile: string | undefined = undefined;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -21,13 +24,31 @@ export class NetlistViewProvider
     private readonly logger?: Logger
   ) {
     this.disposables.push(
-      vscode.window.onDidChangeActiveTextEditor(() => void this.refresh()),
-      vscode.workspace.onDidSaveTextDocument(() => void this.refresh())
+      vscode.window.onDidChangeActiveTextEditor(() => this.scheduleRefresh(250)),
+      vscode.workspace.onDidSaveTextDocument((doc) => {
+        if (doc.fileName.endsWith('.kicad_sch')) {
+          this.scheduleRefresh(0, true);
+        }
+      })
     );
   }
 
   dispose(): void {
+    if (this._refreshTimer) {
+      clearTimeout(this._refreshTimer);
+      this._refreshTimer = undefined;
+    }
     this.disposables.forEach((item) => item.dispose());
+  }
+
+  private scheduleRefresh(delayMs: number, force = false): void {
+    if (this._refreshTimer) {
+      clearTimeout(this._refreshTimer);
+    }
+    this._refreshTimer = setTimeout(() => {
+      this._refreshTimer = undefined;
+      void this.refresh(force);
+    }, delayMs);
   }
 
   resolveWebviewView(webviewView: vscode.WebviewView): void {
@@ -42,15 +63,20 @@ export class NetlistViewProvider
     void this.refresh();
   }
 
-  async refresh(): Promise<void> {
+  async refresh(force = false): Promise<void> {
     if (!this.view) {
       return;
     }
     const file = await this.findSchematicFile();
     if (!file) {
+      this._lastFile = '';
       await this.postNetlist([], 'No schematic opened.');
       return;
     }
+    if (!force && this._lastFile !== undefined && file === this._lastFile) {
+      return;
+    }
+    this._lastFile = file;
     if (!this.runner) {
       await this.postNetlist(
         [],
@@ -201,11 +227,17 @@ export class NetlistViewProvider
     if (active?.fileName.endsWith('.kicad_sch')) {
       return active.fileName;
     }
+    // Find all schematics and prefer ones that have a sibling .kicad_pro
+    // (root schematics) over hierarchical sub-sheets.
     const files = await vscode.workspace.findFiles(
       '**/*.kicad_sch',
       '**/node_modules/**',
-      1
+      50
     );
-    return files[0]?.fsPath;
+    if (files.length === 0) return undefined;
+    const rootSchematic = files.find(
+      (f) => findSiblingProjectFile(f.fsPath) !== undefined
+    );
+    return (rootSchematic ?? files[0])!.fsPath;
   }
 }

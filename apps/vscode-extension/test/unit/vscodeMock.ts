@@ -329,6 +329,10 @@ export class ThemeIcon {
   constructor(public readonly id: string) {}
 }
 
+export class ThemeColor {
+  constructor(public readonly id: string) {}
+}
+
 export class MarkdownString {
   constructor(public readonly value: string) {}
 }

@@ -8,9 +8,29 @@ import type {
   McpConnectionKind
 } from '../types';
 
+// Priority decreases left-to-right within Left-aligned items.
+// Higher number = further left.
+const P = {
+  kicad: 500,
+  drc: 490,
+  erc: 480,
+  sep1: 475,  // separator between validation and AI/MCP group
+  ai: 470,
+  mcp: 460,
+  sep2: 455,  // separator before variant
+  variant: 450
+} as const;
+
 export class KiCadStatusBar implements vscode.Disposable {
-  private readonly item: vscode.StatusBarItem;
+  private readonly kicadItem: vscode.StatusBarItem;
+  private readonly drcItem: vscode.StatusBarItem;
+  private readonly ercItem: vscode.StatusBarItem;
+  private readonly sep1Item: vscode.StatusBarItem;
+  private readonly aiItem: vscode.StatusBarItem;
   private readonly mcpItem: vscode.StatusBarItem;
+  private readonly sep2Item: vscode.StatusBarItem;
+  private readonly variantItem: vscode.StatusBarItem;
+
   private cli: DetectedKiCadCli | undefined;
   private drc: DiagnosticSummary | undefined;
   private erc: DiagnosticSummary | undefined;
@@ -23,26 +43,23 @@ export class KiCadStatusBar implements vscode.Disposable {
   private mcpVersion: string | undefined;
   private mcpMessage: string | undefined;
   private mcpProfile: string | undefined;
+  private activeVariant: string | undefined;
 
   constructor(_context: vscode.ExtensionContext) {
-    this.item = vscode.window.createStatusBarItem(
-      vscode.StatusBarAlignment.Right,
-      100
-    );
-    this.item.command = {
-      command: COMMANDS.showStatusMenu,
-      title: 'KiCad Studio'
-    };
-    this.item.show();
-    this.mcpItem = vscode.window.createStatusBarItem(
-      vscode.StatusBarAlignment.Right,
-      95
-    );
-    this.mcpItem.command = {
-      command: COMMANDS.setupMcpIntegration,
-      title: 'KiCad Studio MCP'
-    };
-    this.mcpItem.show();
+    this.kicadItem = this.make(P.kicad, COMMANDS.showStatusMenu, 'KiCad Studio');
+    this.drcItem = this.make(P.drc, COMMANDS.runDRC, 'Run DRC');
+    this.ercItem = this.make(P.erc, COMMANDS.runERC, 'Run ERC');
+    this.sep1Item = this.makeSeparator(P.sep1);
+    this.aiItem = this.make(P.ai, COMMANDS.openAiChat, 'Open AI Chat');
+    this.mcpItem = this.make(P.mcp, COMMANDS.setupMcpIntegration, 'KiCad MCP');
+    this.sep2Item = this.makeSeparator(P.sep2);
+    this.variantItem = this.make(P.variant, COMMANDS.setActiveVariant, 'Switch Variant');
+
+    this.sep1Item.show();
+    // sep2 is hidden until a variant is active (renderVariant controls it)
+    for (const item of this.allItems()) {
+      item.show();
+    }
     this.render();
   }
 
@@ -56,6 +73,7 @@ export class KiCadStatusBar implements vscode.Disposable {
     mcpConnected?: boolean;
     mcpState?: McpConnectionState | undefined;
     mcpProfile?: string | undefined;
+    activeVariant?: string | undefined;
   }): void {
     this.cli = update.cli ?? this.cli;
     this.drc = update.drc ?? this.drc;
@@ -73,6 +91,7 @@ export class KiCadStatusBar implements vscode.Disposable {
       this.mcpMessage = update.mcpState.message;
     }
     this.mcpProfile = update.mcpProfile ?? this.mcpProfile;
+    this.activeVariant = update.activeVariant ?? this.activeVariant;
     this.render();
   }
 
@@ -105,100 +124,198 @@ export class KiCadStatusBar implements vscode.Disposable {
   }
 
   dispose(): void {
-    this.item.dispose();
-    this.mcpItem.dispose();
+    for (const item of this.allItems()) {
+      item.dispose();
+    }
   }
 
+  // ── render ────────────────────────────────────────────────────────────────
+
   private render(): void {
+    this.renderKicad();
+    this.renderDrc();
+    this.renderErc();
+    this.renderAi();
+    this.renderMcp();
+    this.renderVariant();
+  }
+
+  private renderKicad(): void {
     if (!this.cli) {
-      this.item.text = '$(warning) KiCad: Not found  DRC: —  ERC: —';
-      this.item.tooltip = 'kicad-cli not found. Click to configure.';
-      this.renderMcp();
+      this.kicadItem.text = '$(warning) KiCad';
+      this.kicadItem.tooltip = 'kicad-cli not found. Click to configure.';
+      this.kicadItem.backgroundColor = new vscode.ThemeColor(
+        'statusBarItem.warningBackground'
+      );
+    } else {
+      this.kicadItem.text = `$(circuit-board) ${this.cli.versionLabel}`;
+      this.kicadItem.tooltip = `KiCad CLI: ${this.cli.path}\nClick to open settings`;
+      this.kicadItem.backgroundColor = undefined;
+    }
+    this.kicadItem.command = COMMANDS.showStatusMenu;
+  }
+
+  private renderDrc(): void {
+    if (!this.drc) {
+      this.drcItem.text = 'DRC: —';
+      this.drcItem.tooltip = 'DRC not run yet. Click to run.';
+      this.drcItem.backgroundColor = undefined;
       return;
     }
+    if (this.drc.errors > 0) {
+      this.drcItem.text = `$(error) DRC: ${this.drc.errors}`;
+      this.drcItem.tooltip = `DRC: ${this.drc.errors} error(s), ${this.drc.warnings} warning(s). Click to re-run.`;
+      this.drcItem.backgroundColor = new vscode.ThemeColor(
+        'statusBarItem.errorBackground'
+      );
+    } else if (this.drc.warnings > 0) {
+      this.drcItem.text = `$(warning) DRC: ${this.drc.warnings}`;
+      this.drcItem.tooltip = `DRC: ${this.drc.warnings} warning(s). Click to re-run.`;
+      this.drcItem.backgroundColor = new vscode.ThemeColor(
+        'statusBarItem.warningBackground'
+      );
+    } else {
+      this.drcItem.text = '$(pass) DRC';
+      this.drcItem.tooltip = 'DRC passed with no issues. Click to re-run.';
+      this.drcItem.backgroundColor = undefined;
+    }
+  }
 
-    const drcText = this.drc
-      ? this.drc.errors > 0
-        ? `$(error) DRC: ${this.drc.errors}`
-        : this.drc.warnings > 0
-          ? `$(warning) DRC: ${this.drc.warnings}`
-          : '$(pass) DRC'
-      : 'DRC: —';
-    const ercText = this.erc
-      ? this.erc.errors > 0
-        ? `$(error) ERC: ${this.erc.errors}`
-        : this.erc.warnings > 0
-          ? `$(warning) ERC: ${this.erc.warnings}`
-          : '$(pass) ERC'
-      : 'ERC: —';
-    const aiText = !this.aiConfigured
-      ? '$(circle-outline) AI'
-      : this.aiHealthy === false
-        ? '$(warning) AI'
-        : '$(pass-filled) AI';
+  private renderErc(): void {
+    if (!this.erc) {
+      this.ercItem.text = 'ERC: —';
+      this.ercItem.tooltip = 'ERC not run yet. Click to run.';
+      this.ercItem.backgroundColor = undefined;
+      return;
+    }
+    if (this.erc.errors > 0) {
+      this.ercItem.text = `$(error) ERC: ${this.erc.errors}`;
+      this.ercItem.tooltip = `ERC: ${this.erc.errors} error(s), ${this.erc.warnings} warning(s). Click to re-run.`;
+      this.ercItem.backgroundColor = new vscode.ThemeColor(
+        'statusBarItem.errorBackground'
+      );
+    } else if (this.erc.warnings > 0) {
+      this.ercItem.text = `$(warning) ERC: ${this.erc.warnings}`;
+      this.ercItem.tooltip = `ERC: ${this.erc.warnings} warning(s). Click to re-run.`;
+      this.ercItem.backgroundColor = new vscode.ThemeColor(
+        'statusBarItem.warningBackground'
+      );
+    } else {
+      this.ercItem.text = '$(pass) ERC';
+      this.ercItem.tooltip = 'ERC passed with no issues. Click to re-run.';
+      this.ercItem.backgroundColor = undefined;
+    }
+  }
 
-    this.item.text = `$(circuit-board) ${this.cli.versionLabel}  ${drcText}  ${ercText}  ${aiText}`;
-    this.item.tooltip = `CLI: ${this.cli.path}\nAI: ${
-      !this.aiConfigured
-        ? 'not configured'
-        : this.aiHealthy === false
-          ? 'configured, last check failed'
-          : 'configured'
-    }`;
-    this.renderMcp();
+  private renderAi(): void {
+    if (!this.aiConfigured) {
+      this.aiItem.text = '$(sparkle) AI';
+      this.aiItem.tooltip = 'AI provider not configured. Click to set up.';
+      this.aiItem.command = COMMANDS.setAiApiKey;
+      this.aiItem.backgroundColor = undefined;
+    } else if (this.aiHealthy === false) {
+      this.aiItem.text = '$(warning) AI';
+      this.aiItem.tooltip = 'AI provider configured but last check failed. Click to open chat.';
+      this.aiItem.command = COMMANDS.openAiChat;
+      this.aiItem.backgroundColor = new vscode.ThemeColor(
+        'statusBarItem.warningBackground'
+      );
+    } else {
+      this.aiItem.text = '$(sparkle) AI';
+      this.aiItem.tooltip = 'AI provider ready. Click to open chat.';
+      this.aiItem.command = COMMANDS.openAiChat;
+      this.aiItem.backgroundColor = undefined;
+    }
   }
 
   private renderMcp(): void {
     const profile = this.mcpProfile ? ` ${this.mcpProfile}` : '';
+
     if (this.mcpKind === 'Incompatible') {
-      this.mcpItem.text = '$(warning) MCP Incompatible';
-      this.mcpItem.tooltip = `Incompatible: server ${this.mcpVersion ?? '0.0.0'} is outside the supported range.`;
-      this.mcpItem.command = {
-        command: COMMANDS.openMcpUpgradeGuide,
-        title: 'Open MCP Upgrade Guide'
-      };
+      this.mcpItem.text = '$(plug) MCP !';
+      this.mcpItem.tooltip = `MCP incompatible: server ${this.mcpVersion ?? '?'} is outside supported range. Click to upgrade.`;
+      this.mcpItem.command = COMMANDS.openMcpUpgradeGuide;
+      this.mcpItem.backgroundColor = new vscode.ThemeColor(
+        'statusBarItem.warningBackground'
+      );
       return;
     }
-    if (this.mcpKind === 'VsCodeStdio') {
+    if (this.mcpKind === 'VsCodeStdio' || this.mcpConnected) {
       this.mcpItem.text = `$(plug) MCP${profile}`;
       this.mcpItem.tooltip =
-        'Connected via VS Code stdio (.vscode/mcp.json). ' +
-        'kicad-mcp-pro is managed by VS Code Copilot — HTTP endpoint not required.';
-      this.mcpItem.command = {
-        command: COMMANDS.pickMcpProfile,
-        title: 'Pick MCP Profile'
-      };
-      return;
-    }
-    if (this.mcpConnected) {
-      this.mcpItem.text = `$(plug) MCP${profile}`;
-      this.mcpItem.tooltip =
-        this.mcpCompat === 'warn'
-          ? `Connected (older than recommended): server ${this.mcpVersion ?? 'unknown'} is supported but below the recommended version.`
-          : `Connected (recommended): server ${this.mcpVersion ?? 'unknown'} is reachable.`;
-      this.mcpItem.command = {
-        command: COMMANDS.pickMcpProfile,
-        title: 'Pick MCP Profile'
-      };
+        this.mcpKind === 'VsCodeStdio'
+          ? `MCP connected via VS Code stdio (.vscode/mcp.json)${profile ? `  •  profile: ${this.mcpProfile}` : ''}. Click to switch profile.`
+          : `MCP connected${profile ? `  •  profile: ${this.mcpProfile}` : ''}  •  server ${this.mcpVersion ?? 'unknown'}. Click to switch profile.`;
+      this.mcpItem.command = COMMANDS.pickMcpProfile;
+      this.mcpItem.backgroundColor = undefined;
       return;
     }
     if (this.mcpAvailable) {
-      this.mcpItem.text = '$(plug) MCP Disconnected';
+      this.mcpItem.text = '$(plug) MCP';
       this.mcpItem.tooltip =
-        this.mcpMessage ??
-        'kicad-mcp-pro was detected locally but is not connected. Click to retry.';
-      this.mcpItem.command = {
-        command: COMMANDS.retryMcp,
-        title: 'Retry MCP Connection'
-      };
+        this.mcpMessage ?? 'kicad-mcp-pro detected but not connected. Click to retry.';
+      this.mcpItem.command = COMMANDS.retryMcp;
+      this.mcpItem.backgroundColor = new vscode.ThemeColor(
+        'statusBarItem.warningBackground'
+      );
       return;
     }
-    this.mcpItem.text = '$(plug) MCP Setup';
-    this.mcpItem.tooltip =
-      'kicad-mcp-pro was not detected yet. Click for setup guidance.';
-    this.mcpItem.command = {
-      command: COMMANDS.installMcp,
-      title: 'Install kicad-mcp-pro'
-    };
+    this.mcpItem.text = '$(plug) MCP';
+    this.mcpItem.tooltip = 'kicad-mcp-pro not detected. Click to install / set up.';
+    this.mcpItem.command = COMMANDS.installMcp;
+    this.mcpItem.backgroundColor = undefined;
+  }
+
+  private renderVariant(): void {
+    if (!this.activeVariant) {
+      this.variantItem.hide();
+      this.sep2Item.hide();
+      return;
+    }
+    this.sep2Item.show();
+    this.variantItem.show();
+    this.variantItem.text = `$(layers) ${this.activeVariant}`;
+    this.variantItem.tooltip = `Active variant: ${this.activeVariant}. Click to switch.`;
+    this.variantItem.command = COMMANDS.setActiveVariant;
+    this.variantItem.backgroundColor = undefined;
+  }
+
+  // ── helpers ───────────────────────────────────────────────────────────────
+
+  private make(
+    priority: number,
+    command: string,
+    tooltip: string
+  ): vscode.StatusBarItem {
+    const item = vscode.window.createStatusBarItem(
+      vscode.StatusBarAlignment.Left,
+      priority
+    );
+    item.command = command;
+    item.tooltip = tooltip;
+    return item;
+  }
+
+  private makeSeparator(priority: number): vscode.StatusBarItem {
+    const item = vscode.window.createStatusBarItem(
+      vscode.StatusBarAlignment.Left,
+      priority
+    );
+    item.text = '│';
+    item.color = new vscode.ThemeColor('statusBarItem.prominentForeground');
+    return item;
+  }
+
+  private allItems(): vscode.StatusBarItem[] {
+    return [
+      this.kicadItem,
+      this.drcItem,
+      this.ercItem,
+      this.sep1Item,
+      this.aiItem,
+      this.mcpItem,
+      this.sep2Item,
+      this.variantItem
+    ];
   }
 }

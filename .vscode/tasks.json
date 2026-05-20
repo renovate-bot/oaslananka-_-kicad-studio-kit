@@ -18,6 +18,24 @@
       "script": "test:unit",
       "label": "npm: test:unit",
       "problemMatcher": []
+    },
+    {
+      "label": "Start kicad-mcp-pro (HTTP)",
+      "type": "shell",
+      "command": "kicad-mcp-pro",
+      "args": ["--transport", "http", "--port", "27185"],
+      "isBackground": true,
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "KICAD_MCP_PROJECT_DIR": "${workspaceFolder}/test/fixtures/sample_project",
+          "KICAD_MCP_PROFILE": "full"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
     }
   ]
 }

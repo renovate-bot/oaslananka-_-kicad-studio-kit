@@ -40,13 +40,20 @@ button {
   border: 1px solid var(--border);
   background: var(--vscode-button-secondaryBackground, var(--panel-alt));
   color: var(--vscode-button-secondaryForeground, var(--text));
-  border-radius: 10px;
-  padding: 6px 10px;
+  border-radius: 6px;
+  padding: 5px 9px;
   cursor: pointer;
+  font: 12px/1.4 "Segoe UI", system-ui, sans-serif;
+  white-space: nowrap;
+  transition: background 0.1s;
 }
 
 button:hover {
   background: var(--vscode-button-secondaryHoverBackground, var(--panel-alt));
+}
+
+button:active {
+  opacity: 0.8;
 }
 
 .separator {
@@ -62,23 +69,24 @@ button:hover {
 
 #viewer-layout {
   display: grid;
-  grid-template-columns: minmax(220px, 260px) 1fr minmax(180px, 240px);
+  grid-template-columns: minmax(180px, 240px) 1fr minmax(160px, 220px);
   min-height: 0;
 }
 
 #viewer-layout.compact {
-  grid-template-columns: 1fr minmax(180px, 240px);
+  grid-template-columns: 1fr minmax(140px, 200px);
 }
 
 #viewer-layout.diff-layout {
-  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+  grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
 }
 
 #side-panel,
 #info-panel {
-  padding: 16px;
+  padding: 12px;
   background: var(--panel-alt);
   overflow: auto;
+  min-width: 0;
 }
 
 #side-panel {
@@ -239,11 +247,23 @@ kicanvas-embed {
 .property-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
+  gap: 6px;
+  padding: 6px 8px;
   background: var(--panel-alt);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.layer-item strong,
+.property-item strong,
+.layer-item span,
+.property-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .layer-color {

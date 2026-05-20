@@ -10,84 +10,211 @@
   --border: var(--vscode-panel-border, var(--vscode-editorWidget-border, rgba(128, 128, 128, 0.35)));
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
   font: 13px/1.5 "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
 #bom-app {
   display: grid;
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto auto 1fr;
   height: 100vh;
+  min-width: 0;
 }
 
-#topbar,
-#statsbar {
+/* ── Topbar ── */
+#topbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  padding: 12px 14px;
+  gap: 6px;
+  padding: 8px 10px;
   border-bottom: 1px solid var(--border);
   background: var(--panel);
 }
 
-input,
-button {
+#search {
+  flex: 1 1 100%;
+  min-width: 0;
+  width: 100%;
   border: 1px solid var(--border);
   background: var(--vscode-input-background, var(--panel));
   color: var(--text);
-  border-radius: 10px;
-  padding: 8px 10px;
+  border-radius: 6px;
+  padding: 5px 8px;
+  font: inherit;
+  outline: none;
 }
 
+#search:focus {
+  border-color: var(--accent);
+}
+
+#topbar label {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+#topbar label input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+/* ── Buttons ── */
 button {
   cursor: pointer;
+  border: 1px solid transparent;
   background: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
-  border-color: transparent;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font: 12px/1.4 inherit;
+  white-space: nowrap;
+  transition: background 0.1s;
 }
 
 button:hover {
   background: var(--vscode-button-hoverBackground, var(--vscode-button-background));
 }
 
+button:active {
+  opacity: 0.85;
+}
+
+/* ── Statsbar ── */
+#statsbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  font-size: 12px;
+  min-height: 30px;
+}
+
+/* ── Table ── */
 #table-wrapper {
   overflow: auto;
+  min-height: 0;
 }
 
 table {
   width: 100%;
+  min-width: 480px;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
 th,
 td {
-  padding: 10px 12px;
+  padding: 7px 10px;
   border-bottom: 1px solid var(--border);
   text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 th {
   position: sticky;
   top: 0;
+  z-index: 1;
   background: var(--panel-alt);
   cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
 }
 
+th::after {
+  content: '';
+  display: inline-block;
+  width: 0;
+  margin-left: 4px;
+  opacity: 0.5;
+}
+
+th[data-sort="asc"]::after  { content: '↑'; }
+th[data-sort="desc"]::after { content: '↓'; }
+
+/* Column widths (table-layout: fixed) */
+th:nth-child(1), td:nth-child(1) { width: 80px; }   /* Reference */
+th:nth-child(2), td:nth-child(2) { width: 36px; }   /* Qty */
+th:nth-child(3), td:nth-child(3) { width: 70px; }   /* Value */
+th:nth-child(4), td:nth-child(4) { width: 120px; }  /* Footprint */
+th:nth-child(5), td:nth-child(5) { width: 90px; }   /* MPN */
+th:nth-child(6), td:nth-child(6) { width: 100px; }  /* Manufacturer */
+th:nth-child(7), td:nth-child(7) { width: 60px; }   /* LCSC */
+th:nth-child(8), td:nth-child(8) { width: auto; }   /* Description */
+
+tbody tr:hover {
+  background: var(--vscode-list-hoverBackground, rgba(128, 128, 128, 0.08));
+}
+
+tbody tr.selected {
+  background: var(--vscode-list-activeSelectionBackground, color-mix(in srgb, var(--accent) 18%, transparent));
+  color: var(--vscode-list-activeSelectionForeground, var(--text));
+}
+
+/* ── Chip link ── */
 .chip-link {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   border-radius: 999px;
-  padding: 4px 8px;
+  padding: 2px 7px;
+  font-size: 11px;
   text-decoration: none;
   color: var(--vscode-textLink-foreground, var(--accent));
-  background: var(--vscode-textLink-activeForeground, transparent);
   border: 1px solid var(--border);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
+.chip-link:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+/* ── Utilities ── */
 .muted {
   color: var(--muted);
+}
+
+.text-right {
+  text-align: right;
+}
+
+/* ── Empty / error state ── */
+#bom-empty {
+  display: none;
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+#bom-empty.visible {
+  display: block;
 }

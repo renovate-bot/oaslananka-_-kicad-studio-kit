@@ -1,0 +1,13 @@
+{
+  "servers": {
+    "kicad": {
+      "type": "stdio",
+      "command": "kicad-mcp-pro",
+      "args": [],
+      "env": {
+        "KICAD_MCP_PROJECT_DIR": "${workspaceFolder}/test/fixtures/sample_project",
+        "KICAD_MCP_PROFILE": "full"
+      }
+    }
+  }
+}

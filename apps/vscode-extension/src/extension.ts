@@ -34,7 +34,10 @@ import {
   SETTINGS,
   TREE_VIEW_ID,
   VARIANTS_VIEW_ID,
-  OCTOPART_SECRET_KEY
+  OCTOPART_SECRET_KEY,
+  VALIDATION_VIEW_ID,
+  LIBRARY_VIEW_ID,
+  MCP_TOOLS_VIEW_ID
 } from './constants';
 import { registerAllCommands } from './commands';
 import { GitDiffDetector } from './git/gitDiffDetector';
@@ -228,8 +231,20 @@ export async function activate(
       NETLIST_VIEW_ID,
       netlistViewProvider
     ),
-    // Component search view — empty tree so viewsWelcome shows the action buttons.
+    // Static empty trees — viewsWelcome supplies the button content.
     vscode.window.registerTreeDataProvider(COMPONENT_SEARCH_VIEW_ID, {
+      getTreeItem: (element: vscode.TreeItem) => element,
+      getChildren: () => []
+    }),
+    vscode.window.registerTreeDataProvider(VALIDATION_VIEW_ID, {
+      getTreeItem: (element: vscode.TreeItem) => element,
+      getChildren: () => []
+    }),
+    vscode.window.registerTreeDataProvider(LIBRARY_VIEW_ID, {
+      getTreeItem: (element: vscode.TreeItem) => element,
+      getChildren: () => []
+    }),
+    vscode.window.registerTreeDataProvider(MCP_TOOLS_VIEW_ID, {
       getTreeItem: (element: vscode.TreeItem) => element,
       getChildren: () => []
     }),

@@ -13,11 +13,27 @@
   <title>KiCad Schematic Viewer</title>
   <link rel="stylesheet" href="{{viewerCssUri}}">
   <style nonce="{{scriptNonce}}">
-    body { margin: 0; background: #0f172a; color: #e2e8f0; font: 13px/1.5 "Segoe UI", sans-serif; }
-    #viewer-shell { min-height: 100vh; }
-    #toolbar, #footer-toolbar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; }
-    button { color: #e2e8f0; background: #1e293b; border: 1px solid rgba(148,163,184,.25); border-radius: 8px; padding: 6px 10px; }
-    #loading-overlay, #error-overlay { color: #e2e8f0; text-align: center; }
+    :root {
+      --bg: var(--vscode-editor-background, #0f172a);
+      --panel: var(--vscode-editorWidget-background, var(--vscode-editor-background, #1e293b));
+      --text: var(--vscode-foreground, #e2e8f0);
+      --muted: var(--vscode-descriptionForeground, #94a3b8);
+      --border: var(--vscode-panel-border, var(--vscode-editorWidget-border, rgba(148,163,184,.25)));
+      --accent: var(--vscode-focusBorder, #38bdf8);
+      --btn-bg: var(--vscode-button-secondaryBackground, #1e293b);
+      --btn-fg: var(--vscode-button-secondaryForeground, #e2e8f0);
+      --btn-hover: var(--vscode-button-secondaryHoverBackground, #334155);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 13px/1.5 "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    #viewer-shell { display: grid; grid-template-rows: auto auto 1fr; height: 100vh; min-height: 0; }
+    #toolbar { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: var(--panel); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+    button { color: var(--btn-fg); background: var(--btn-bg); border: 1px solid var(--border); border-radius: 6px; padding: 5px 9px; cursor: pointer; font: inherit; font-size: 12px; transition: background 0.1s; white-space: nowrap; }
+    button:hover { background: var(--btn-hover); }
+    button:active { opacity: 0.8; }
+    .separator { width: 1px; height: 18px; background: var(--border); flex-shrink: 0; }
+    .status { color: var(--muted); margin-left: auto; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+    #loading-overlay, #error-overlay { color: var(--text); text-align: center; }
     #error-message { display: block; font-weight: 600; margin-bottom: 8px; }
     #error-details {
       max-width: min(900px, calc(100vw - 64px));
@@ -25,20 +41,25 @@
       overflow: auto;
       margin: 0;
       padding: 12px;
-      border-radius: 10px;
+      border-radius: 8px;
       text-align: left;
-      background: rgba(15, 23, 42, 0.92);
-      border: 1px solid rgba(148,163,184,.25);
-      color: #cbd5e1;
+      background: color-mix(in srgb, var(--bg) 92%, transparent);
+      border: 1px solid var(--border);
+      color: var(--muted);
       white-space: pre-wrap;
       word-break: break-word;
+      font-size: 12px;
     }
     #diagnostic-banner {
       display: block;
-      padding: 8px 14px;
-      background: rgba(56, 189, 248, 0.12);
-      color: #bae6fd;
-      border-bottom: 1px solid rgba(148,163,184,.18);
+      padding: 5px 12px;
+      background: color-mix(in srgb, var(--accent) 10%, transparent);
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
   </style>
 </head>

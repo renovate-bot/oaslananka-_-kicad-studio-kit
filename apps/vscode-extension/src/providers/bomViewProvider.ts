@@ -18,6 +18,7 @@ export class BomViewProvider
   private readonly bomExporter = new BomExporter();
   private readonly disposables: vscode.Disposable[] = [];
   private currentFile?: string;
+  private _refreshTimer: NodeJS.Timeout | undefined = undefined;
   /** URI of the last schematic opened in the custom viewer (webview panel). */
   private _lastViewedSchematicUri?: vscode.Uri;
 
@@ -27,13 +28,30 @@ export class BomViewProvider
   ) {
     this.bomParser = new BomParser(parser);
     this.disposables.push(
-      vscode.window.onDidChangeActiveTextEditor(() => void this.refresh()),
-      vscode.workspace.onDidSaveTextDocument(() => void this.refresh())
+      vscode.window.onDidChangeActiveTextEditor(() => this.scheduleRefresh(200)),
+      vscode.workspace.onDidSaveTextDocument((doc) => {
+        if (doc.fileName.endsWith('.kicad_sch')) {
+          this.scheduleRefresh(0);
+        }
+      })
     );
   }
 
   dispose(): void {
+    if (this._refreshTimer) {
+      clearTimeout(this._refreshTimer);
+    }
     this.disposables.forEach((item) => item.dispose());
+  }
+
+  private scheduleRefresh(delayMs: number): void {
+    if (this._refreshTimer) {
+      clearTimeout(this._refreshTimer);
+    }
+    this._refreshTimer = setTimeout(() => {
+      this._refreshTimer = undefined;
+      void this.refresh();
+    }, delayMs);
   }
 
   /**
@@ -79,7 +97,7 @@ export class BomViewProvider
   async refresh(): Promise<void> {
     const file = await this.findSchematicFile();
     if (!file) {
-      this.manager.setStatus('No schematic opened.');
+      this.manager.setStatus('Open a .kicad_sch schematic file to load the Bill of Materials.');
       return;
     }
     this.manager.setLoading();

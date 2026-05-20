@@ -1,124 +1,77 @@
+// Integration-level tests for the KiCadStatusBar multi-item layout.
+// These complement the more granular per-item tests in kicadStatusBar.test.ts
+// by verifying cross-item state combinations and MCP compatibility edge cases.
+
 import { KiCadStatusBar } from '../../src/statusbar/kicadStatusBar';
 import { window } from './vscodeMock';
+
+// Item indices in allItems(): kicad=0, drc=1, erc=2, sep1=3, ai=4, mcp=5, sep2=6, variant=7
+const IDX = { kicad: 0, drc: 1, erc: 2, sep1: 3, ai: 4, mcp: 5, sep2: 6, variant: 7 };
+
+function getItems() {
+  const mock = window.createStatusBarItem as jest.Mock;
+  return mock.mock.results.map((r) => r.value as { text: string; tooltip: string; backgroundColor?: unknown; show: jest.Mock; hide: jest.Mock });
+}
 
 describe('KiCadStatusBar', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('renders a missing CLI state by default', () => {
-    const statusBar = new KiCadStatusBar({} as never);
-    const [mainItem, mcpItem] = getStatusBarItems();
-
-    expect(mainItem.text).toBe('$(warning) KiCad: Not found  DRC: —  ERC: —');
-    expect(mainItem.tooltip).toContain('kicad-cli not found');
-    expect(mcpItem.text).toBe('$(plug) MCP Setup');
-
-    statusBar.dispose();
+  it('creates eight status bar items', () => {
+    const bar = new KiCadStatusBar({} as never);
+    expect((window.createStatusBarItem as jest.Mock).mock.calls).toHaveLength(8);
+    bar.dispose();
   });
 
-  it('renders CLI, check summaries, AI health, and MCP connectivity', () => {
-    const statusBar = new KiCadStatusBar({} as never);
-    const [mainItem, mcpItem] = getStatusBarItems();
+  it('shows warning on kicad item and dash on drc/erc by default', () => {
+    const bar = new KiCadStatusBar({} as never);
+    const items = getItems();
+    expect(items[IDX.kicad]!.text).toContain('warning');
+    expect(items[IDX.drc]!.text).toContain('—');
+    expect(items[IDX.erc]!.text).toContain('—');
+    bar.dispose();
+  });
 
-    statusBar.update({
-      cli: {
-        path: '/opt/kicad/kicad-cli',
-        version: '10.0.1',
-        versionLabel: 'KiCad 10.0.1',
-        source: 'path'
-      },
-      drc: {
-        file: 'board.kicad_pcb',
-        errors: 0,
-        warnings: 1,
-        infos: 0,
-        source: 'drc'
-      },
-      erc: {
-        file: 'board.kicad_sch',
-        errors: 2,
-        warnings: 0,
-        infos: 0,
-        source: 'erc'
-      },
+  it('renders full state: cli + drc warning + erc error + ai unhealthy + mcp connected', () => {
+    const bar = new KiCadStatusBar({} as never);
+    bar.update({
+      cli: { path: '/opt/kicad/kicad-cli', version: '10.0.1', versionLabel: 'KiCad 10.0.1', source: 'path' },
+      drc: { file: 'board.kicad_pcb', errors: 0, warnings: 1, infos: 0, source: 'drc' },
+      erc: { file: 'board.kicad_sch', errors: 2, warnings: 0, infos: 0, source: 'erc' },
       aiConfigured: true,
       aiHealthy: false,
-      mcpAvailable: true,
-      mcpConnected: true
+      mcpState: { kind: 'Connected', available: true, connected: true }
     });
-
-    expect(mainItem.text).toContain('KiCad 10.0.1');
-    expect(mainItem.text).toContain('$(warning) DRC: 1');
-    expect(mainItem.text).toContain('$(error) ERC: 2');
-    expect(mainItem.text).toContain('$(warning) AI');
-    expect(mainItem.tooltip).toContain('/opt/kicad/kicad-cli');
-    expect(mcpItem.text).toBe('$(plug) MCP');
-    expect(mcpItem.tooltip).toContain('Connected (recommended)');
-
-    statusBar.dispose();
+    const items = getItems();
+    expect(items[IDX.kicad]!.text).toContain('10.0.1');
+    expect(items[IDX.drc]!.text).toContain('warning');
+    expect(items[IDX.drc]!.text).toContain('1');
+    expect(items[IDX.erc]!.text).toContain('error');
+    expect(items[IDX.erc]!.text).toContain('2');
+    expect(items[IDX.ai]!.text).toContain('warning');
+    expect(items[IDX.mcp]!.text).toContain('MCP');
+    bar.dispose();
   });
 
-  it('renders success states and the available-but-not-connected MCP branch', () => {
-    const statusBar = new KiCadStatusBar({} as never);
-    const [mainItem, mcpItem] = getStatusBarItems();
-
-    statusBar.update({
-      cli: {
-        path: '/opt/kicad/kicad-cli',
-        version: '10.0.1',
-        versionLabel: 'KiCad 10.0.1',
-        source: 'path'
-      },
-      drc: {
-        file: 'board.kicad_pcb',
-        errors: 0,
-        warnings: 0,
-        infos: 0,
-        source: 'drc'
-      },
-      erc: {
-        file: 'board.kicad_sch',
-        errors: 0,
-        warnings: 0,
-        infos: 0,
-        source: 'erc'
-      },
+  it('renders pass states for drc and erc', () => {
+    const bar = new KiCadStatusBar({} as never);
+    bar.update({
+      drc: { file: 'board.kicad_pcb', errors: 0, warnings: 0, infos: 0, source: 'drc' },
+      erc: { file: 'board.kicad_sch', errors: 0, warnings: 0, infos: 0, source: 'erc' },
       aiConfigured: true,
-      aiHealthy: true,
-      mcpAvailable: true,
-      mcpConnected: false
+      aiHealthy: true
     });
-
-    expect(mainItem.text).toContain('$(pass) DRC');
-    expect(mainItem.text).toContain('$(pass) ERC');
-    expect(mainItem.text).toContain('$(pass-filled) AI');
-    expect(mcpItem.text).toBe('$(plug) MCP Disconnected');
-    expect(statusBar.getSnapshot().mcpAvailable).toBe(true);
-
-    statusBar.dispose();
+    const items = getItems();
+    expect(items[IDX.drc]!.text).toContain('pass');
+    expect(items[IDX.erc]!.text).toContain('pass');
+    expect(items[IDX.ai]!.text).not.toContain('warning');
+    bar.dispose();
   });
 
-  it('renders older recommended and incompatible MCP states', () => {
-    const statusBar = new KiCadStatusBar({} as never);
-    const [, mcpItem] = getStatusBarItems();
-
-    statusBar.update({
-      mcpState: {
-        kind: 'Connected',
-        available: true,
-        connected: true,
-        server: {
-          version: '3.0.0',
-          compat: 'warn',
-          capturedAt: new Date().toISOString(),
-          capabilities: { tools: [], resources: [], prompts: [] }
-        }
-      }
-    });
-    expect(mcpItem.tooltip).toContain('Connected (older than recommended)');
-
-    statusBar.update({
+  it('shows MCP incompatible state', () => {
+    const bar = new KiCadStatusBar({} as never);
+    bar.update({
       mcpState: {
         kind: 'Incompatible',
         available: true,
@@ -131,27 +84,56 @@ describe('KiCadStatusBar', () => {
         }
       }
     });
-    expect(mcpItem.text).toBe('$(warning) MCP Incompatible');
-    expect(mcpItem.tooltip).toContain('Incompatible');
+    const items = getItems();
+    expect(items[IDX.mcp]!.text).toContain('MCP');
+    expect(items[IDX.mcp]!.text).toContain('!');
+    expect(items[IDX.mcp]!.tooltip).toContain('incompatible');
+    bar.dispose();
+  });
 
-    statusBar.dispose();
+  it('shows MCP warn compat state as connected with version in tooltip', () => {
+    const bar = new KiCadStatusBar({} as never);
+    bar.update({
+      mcpState: {
+        kind: 'Connected',
+        available: true,
+        connected: true,
+        server: {
+          version: '3.0.0',
+          compat: 'warn',
+          capturedAt: new Date().toISOString(),
+          capabilities: { tools: [], resources: [], prompts: [] }
+        }
+      }
+    });
+    const items = getItems();
+    expect(items[IDX.mcp]!.text).toContain('MCP');
+    expect(items[IDX.mcp]!.tooltip).toContain('3.0.0');
+    bar.dispose();
+  });
+
+  it('shows variant item when activeVariant is set', () => {
+    const bar = new KiCadStatusBar({} as never);
+    bar.update({ activeVariant: 'prototype' });
+    const items = getItems();
+    expect(items[IDX.variant]!.text).toContain('prototype');
+    bar.dispose();
+  });
+
+  it('snapshot returns cli, drc, erc, ai, mcp state', () => {
+    const bar = new KiCadStatusBar({} as never);
+    bar.update({
+      cli: { path: '/bin/kicad-cli', version: '10.0.0', versionLabel: 'KiCad 10.0.0', source: 'path' },
+      drc: { file: 'board.kicad_pcb', errors: 1, warnings: 0, infos: 0, source: 'drc' },
+      aiConfigured: true,
+      aiHealthy: true,
+      mcpState: { kind: 'Connected', available: true, connected: true }
+    });
+    const snap = bar.getSnapshot();
+    expect(snap.cli?.version).toBe('10.0.0');
+    expect(snap.drc?.errors).toBe(1);
+    expect(snap.aiConfigured).toBe(true);
+    expect(snap.mcpConnected).toBe(true);
+    bar.dispose();
   });
 });
-
-function getStatusBarItems(): [
-  { text: string; tooltip: string },
-  { text: string; tooltip: string }
-] {
-  const mock = window.createStatusBarItem as jest.Mock;
-  const items = mock.mock.results.map(
-    (result) => result.value as { text: string; tooltip: string }
-  );
-  const mainItem = items[0];
-  const mcpItem = items[1];
-  if (!mainItem || !mcpItem) {
-    throw new Error(
-      'Expected both main and MCP status bar items to be created.'
-    );
-  }
-  return [mainItem, mcpItem];
-}

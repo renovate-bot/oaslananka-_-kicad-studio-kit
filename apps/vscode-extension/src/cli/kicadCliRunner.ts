@@ -107,7 +107,7 @@ export class KiCadCliRunner {
     return new Promise<CliResult>((resolve, reject) => {
       const child = spawn(detected.path, fullArgs, {
         cwd: options.cwd,
-        env: process.env,
+        env: { ...process.env, LANGUAGE: 'en', LANG: 'en_US.UTF-8', KICAD_LANGUAGE: 'en' },
         signal,
         stdio: ['ignore', 'pipe', 'pipe']
       });

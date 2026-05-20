@@ -229,15 +229,29 @@
           "icon": "assets/icon-dark.png"
         },
         {
+          "id": "kicadstudio.validation",
+          "name": "Validation",
+          "when": "kicadstudio.hasProject",
+          "icon": "assets/icon-dark.png"
+        },
+        {
+          "id": "kicadstudio.qualityGate",
+          "name": "Quality Gates",
+          "when": "kicadstudio.hasProject",
+          "icon": "assets/icon-dark.png"
+        },
+        {
           "id": "kicadstudio.bomView",
           "name": "Bill of Materials",
-          "when": "kicadstudio.schematicOpen",
+          "type": "webview",
+          "when": "kicadstudio.hasProject",
           "icon": "assets/icon-dark.png"
         },
         {
           "id": "kicadstudio.netlistView",
           "name": "Netlist",
-          "when": "kicadstudio.schematicOpen",
+          "type": "webview",
+          "when": "kicadstudio.hasProject",
           "icon": "assets/icon-dark.png"
         },
         {
@@ -247,15 +261,8 @@
           "icon": "assets/icon-dark.png"
         },
         {
-          "id": "kicadstudio.fixQueue",
-          "name": "AI Fix Queue",
-          "when": "kicadstudio.mcpConnected",
-          "icon": "assets/icon-dark.png"
-        },
-        {
-          "id": "kicadstudio.qualityGate",
-          "name": "Quality Gates",
-          "when": "kicadstudio.mcpConnected && kicadstudio.hasProject",
+          "id": "kicadstudio.library",
+          "name": "Library",
           "icon": "assets/icon-dark.png"
         },
         {
@@ -265,8 +272,19 @@
           "icon": "assets/icon-dark.png"
         },
         {
+          "id": "kicadstudio.fixQueue",
+          "name": "AI Fix Queue",
+          "when": "kicadstudio.mcpConnected",
+          "icon": "assets/icon-dark.png"
+        },
+        {
           "id": "kicadstudio.componentSearch",
           "name": "Component Search",
+          "icon": "assets/icon-dark.png"
+        },
+        {
+          "id": "kicadstudio.mcpTools",
+          "name": "MCP & Tools",
           "icon": "assets/icon-dark.png"
         }
       ]
@@ -277,16 +295,52 @@
         "contents": "Open a folder containing a `.kicad_pro`, `.kicad_sch`, or `.kicad_pcb` file to start using KiCad Studio.\n[Open Folder](command:workbench.action.files.openFolder)\n[Open Settings Panel](command:kicadstudio.openSettings)"
       },
       {
+        "view": "kicadstudio.validation",
+        "contents": "Catch layout and electrical violations before manufacturing.\n\n[Run DRC](command:kicadstudio.runDRC)\n[Run ERC](command:kicadstudio.runERC)\n\nResults appear in the **Problems** panel below.",
+        "when": "kicadstudio.hasProject && kicadstudio.workspaceTrusted"
+      },
+      {
+        "view": "kicadstudio.validation",
+        "contents": "Workspace is in Restricted Mode — DRC/ERC are disabled.\n\n[Manage Workspace Trust](command:workbench.action.manageTrust)",
+        "when": "kicadstudio.hasProject && !kicadstudio.workspaceTrusted"
+      },
+      {
+        "view": "kicadstudio.validation",
+        "contents": "Open a KiCad project to run design rule checks.\n[Open Folder](command:workbench.action.files.openFolder)",
+        "when": "!kicadstudio.hasProject"
+      },
+      {
         "view": "kicadstudio.bomView",
-        "contents": "Open a schematic file to see its BOM here."
+        "contents": "Open a KiCad project to view the Bill of Materials.\n[Open Folder](command:workbench.action.files.openFolder)",
+        "when": "!kicadstudio.hasProject"
       },
       {
         "view": "kicadstudio.netlistView",
-        "contents": "Open a schematic file to inspect its netlist here."
+        "contents": "Open a KiCad project to inspect the netlist.\n[Open Folder](command:workbench.action.files.openFolder)",
+        "when": "!kicadstudio.hasProject"
       },
       {
         "view": "kicadstudio.variants",
         "contents": "Open a KiCad 10 project to browse and switch design variants."
+      },
+      {
+        "view": "kicadstudio.library",
+        "contents": "[Search Symbols](command:kicadstudio.searchLibrarySymbol)\n[Search Footprints](command:kicadstudio.searchLibraryFootprint)\n[Reindex Libraries](command:kicadstudio.reindexLibraries)"
+      },
+      {
+        "view": "kicadstudio.mcpTools",
+        "contents": "[Retry Connection](command:kicadstudio.mcp.retry)\n[Install kicad-mcp-pro](command:kicadstudio.mcp.install)\n[Open Log](command:kicadstudio.mcp.openLog)",
+        "when": "!kicadstudio.mcpConnected && !kicadstudio.mcpVsCodeStdio"
+      },
+      {
+        "view": "kicadstudio.mcpTools",
+        "contents": "kicad-mcp-pro connected.\n[Open Log](command:kicadstudio.mcp.openLog)\n[Pick Profile](command:kicadstudio.mcp.pickProfile)",
+        "when": "kicadstudio.mcpConnected"
+      },
+      {
+        "view": "kicadstudio.mcpTools",
+        "contents": "Connected via VS Code stdio.\n[Open Log](command:kicadstudio.mcp.openLog)\n[Switch to HTTP Mode](command:kicadstudio.mcp.launchHttp)",
+        "when": "kicadstudio.mcpVsCodeStdio"
       },
       {
         "view": "kicadstudio.fixQueue",
@@ -305,17 +359,23 @@
       },
       {
         "view": "kicadstudio.qualityGate",
-        "contents": "Connect `kicad-mcp-pro` and run quality gates to inspect release readiness.\n[Setup MCP Integration](command:kicadstudio.setupMcpIntegration)",
+        "contents": "Connect `kicad-mcp-pro` to run quality gates and inspect release readiness.\n[Setup MCP Integration](command:kicadstudio.setupMcpIntegration)\n[Install kicad-mcp-pro](command:kicadstudio.mcp.install)",
         "when": "!kicadstudio.mcpConnected && !kicadstudio.mcpVsCodeStdio"
       },
       {
         "view": "kicadstudio.qualityGate",
-        "contents": "kicad-mcp-pro is connected via VS Code stdio.\n\nQuality Gates require the HTTP transport (port 27185).\n[Switch to HTTP Mode](command:kicadstudio.mcp.launchHttp)\n\nOr start kicad-mcp-pro manually with `--transport http --port 27185`.",
+        "contents": "kicad-mcp-pro is connected via VS Code stdio.\n\nQuality Gates require the HTTP transport (port 27185).\n[Switch to HTTP Mode](command:kicadstudio.mcp.launchHttp)",
         "when": "kicadstudio.mcpVsCodeStdio"
       },
       {
         "view": "kicadstudio.drcRules",
-        "contents": "Open a `.kicad_dru` file or add one to the workspace to inspect graphical rules."
+        "contents": "No `.kicad_dru` rule file found in the workspace.\n\n[Add DRC Rule with AI](command:kicadstudio.drcRule.addWithMcp)\n[Open Docs](command:kicadstudio.qualityGate.openDocs)",
+        "when": "kicadstudio.hasProject"
+      },
+      {
+        "view": "kicadstudio.drcRules",
+        "contents": "Open a KiCad project to manage custom DRC rules.\n[Open Folder](command:workbench.action.files.openFolder)",
+        "when": "!kicadstudio.hasProject"
       },
       {
         "view": "kicadstudio.componentSearch",
