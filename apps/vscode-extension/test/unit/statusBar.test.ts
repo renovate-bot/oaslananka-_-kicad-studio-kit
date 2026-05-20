@@ -24,12 +24,13 @@ describe('KiCadStatusBar', () => {
     bar.dispose();
   });
 
-  it('shows warning on kicad item and dash on drc/erc by default', () => {
+  it('shows warning on kicad item and hides inactive drc/erc by default', () => {
     const bar = new KiCadStatusBar({} as never);
     const items = getItems();
     expect(items[IDX.kicad]!.text).toContain('warning');
-    expect(items[IDX.drc]!.text).toContain('—');
-    expect(items[IDX.erc]!.text).toContain('—');
+    expect(items[IDX.drc]!.hide).toHaveBeenCalled();
+    expect(items[IDX.erc]!.hide).toHaveBeenCalled();
+    expect(items[IDX.sep1]!.hide).toHaveBeenCalled();
     bar.dispose();
   });
 

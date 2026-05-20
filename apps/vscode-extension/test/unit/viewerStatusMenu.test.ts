@@ -3,15 +3,13 @@ import { buildStatusMenuItems } from '../../src/commands/viewerStatusMenu';
 
 describe('buildStatusMenuItems', () => {
   it('uses a workspace trust action instead of CLI detection setup in restricted workspaces', () => {
-    const [trustItem] = buildStatusMenuItems({
+    const trustItem = buildStatusMenuItems({
       trusted: false,
       snapshot: {}
-    });
+    }).find((item) => item.label === '$(shield) Manage Workspace Trust');
 
     expect(trustItem).toEqual(
       expect.objectContaining({
-        label: '$(shield) Restricted Mode',
-        description: 'workspace trust required',
         command: 'workbench.trust.manage',
         args: []
       })
@@ -45,36 +43,62 @@ describe('buildStatusMenuItems', () => {
       }
     });
 
-    expect(items[0]).toEqual(
+    expect(items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: 'Status', kind: -1 }),
+        expect.objectContaining({ label: 'Validate', kind: -1 }),
+        expect.objectContaining({ label: 'Export', kind: -1 }),
+        expect.objectContaining({ label: 'Libraries', kind: -1 }),
+        expect.objectContaining({ label: 'AI & MCP', kind: -1 }),
+        expect.objectContaining({ label: 'Settings', kind: -1 })
+      ])
+    );
+    const detectedItem = items.find(
+      (item) => item.label === '$(circuit-board) KiCad detected'
+    );
+    expect(detectedItem).toEqual(
       expect.objectContaining({
-        label: '$(check) KiCad 10.0.1',
-        description: 'settings',
-        command: COMMANDS.detectCli
+        description: 'KiCad 10.0.1',
+        detail: expect.stringContaining('/opt/kicad/bin/kicad-cli')
       })
     );
+    expect(detectedItem).not.toHaveProperty('command');
     expect(items).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           command: COMMANDS.runDRC,
-          description: '2 errors, 1 warnings, 0 info'
+          description: '2 errors, 1 warnings, 0 info',
+          detail: 'Board design rules: /workspace/sample.kicad_pcb'
         }),
         expect.objectContaining({
           command: COMMANDS.runERC,
-          description: '0 errors, 0 warnings, 1 info'
+          description: '0 errors, 0 warnings, 1 info',
+          detail: 'Schematic electrical rules: /workspace/sample.kicad_sch'
         })
       ])
     );
   });
 
   it('opens CLI settings when trusted but kicad-cli is not detected', () => {
-    const [cliItem] = buildStatusMenuItems({
+    const items = buildStatusMenuItems({
       trusted: true,
       snapshot: {}
     });
+    const statusItem = items.find(
+      (item) => item.label === '$(warning) kicad-cli not detected'
+    );
+    const cliItem = items.find(
+      (item) => item.label === '$(settings-gear) Configure kicad-cli path'
+    );
 
+    expect(statusItem).toEqual(
+      expect.objectContaining({
+        description: 'configure required'
+      })
+    );
+    expect(statusItem).not.toHaveProperty('command');
     expect(cliItem).toEqual(
       expect.objectContaining({
-        label: '$(warning) kicad-cli not found',
         command: 'workbench.action.openSettings',
         args: [SETTINGS.cliPath]
       })

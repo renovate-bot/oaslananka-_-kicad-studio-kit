@@ -136,6 +136,8 @@ export const COMMANDS = {
   diffVariantBom: 'kicadstudio.variant.diffBom',
   refreshVariants: 'kicadstudio.variant.refresh',
   revealDrcRule: 'kicadstudio.drcRule.reveal',
+  createDrcRulesFile: 'kicadstudio.drcRule.createDefault',
+  importDrcRulesTemplate: 'kicadstudio.drcRule.importTemplate',
   addDrcRuleWithMcp: 'kicadstudio.drcRule.addWithMcp',
   exportViewerSnapshot: 'kicadstudio.exportViewerSnapshot',
   exportViewerSvg: 'kicadstudio.exportViewerSvg',

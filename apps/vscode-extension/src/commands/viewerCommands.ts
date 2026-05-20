@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import {
   COMMANDS,
   PCB_EDITOR_VIEW_TYPE,
@@ -13,6 +15,7 @@ import {
 import { resolveKiCadExecutable, launchDetached } from './kicadLauncher';
 import { buildStatusMenuItems } from './viewerStatusMenu';
 import type { CommandServices } from './types';
+import { findFirstWorkspaceFile, getWorkspaceRoot } from '../utils/pathUtils';
 
 /**
  * Register viewer, tree, library, variant, and general navigation commands.
@@ -34,7 +37,7 @@ export function registerViewerCommands(
         buildStatusMenuItems({ trusted, cli, snapshot }),
         { title: 'KiCad Studio Commands' }
       );
-      if (picked) {
+      if (picked?.command) {
         await vscode.commands.executeCommand(
           picked.command,
           ...(picked.args ?? [])
@@ -162,6 +165,85 @@ export function registerViewerCommands(
     vscode.commands.registerCommand(
       COMMANDS.revealDrcRule,
       (item: DrcRuleItem) => services.drcRulesProvider.reveal(item)
+    ),
+
+    registerTrustedCommand(
+      COMMANDS.createDrcRulesFile,
+      async () => {
+        await createDrcRulesFile(services, 'default');
+      },
+      'Create .kicad_dru'
+    ),
+
+    registerTrustedCommand(
+      COMMANDS.importDrcRulesTemplate,
+      async () => {
+        await createDrcRulesFile(services, 'fabrication');
+      },
+      'Import .kicad_dru template'
     )
   ];
+}
+
+type DrcTemplate = 'default' | 'fabrication';
+
+async function createDrcRulesFile(
+  services: CommandServices,
+  template: DrcTemplate
+): Promise<void> {
+  const target = await resolveDrcRulesPath();
+  if (!target) {
+    void vscode.window.showWarningMessage(
+      'Open a KiCad workspace before creating a .kicad_dru rules file.'
+    );
+    return;
+  }
+
+  if (!fs.existsSync(target)) {
+    fs.writeFileSync(target, drcRulesTemplate(template), 'utf8');
+  }
+
+  const document = await vscode.workspace.openTextDocument(target);
+  await vscode.window.showTextDocument(document, { preview: false });
+  services.drcRulesProvider.refresh();
+}
+
+async function resolveDrcRulesPath(): Promise<string | undefined> {
+  const existing = await findFirstWorkspaceFile('**/*.kicad_dru');
+  if (existing) {
+    return existing;
+  }
+
+  const project = await findFirstWorkspaceFile('**/*.kicad_pro');
+  if (project) {
+    return path.join(
+      path.dirname(project),
+      `${path.parse(project).name}.kicad_dru`
+    );
+  }
+
+  const root = getWorkspaceRoot();
+  return root ? path.join(root, 'kicad-studio.kicad_dru') : undefined;
+}
+
+function drcRulesTemplate(template: DrcTemplate): string {
+  if (template === 'fabrication') {
+    return `(version 1)
+
+(rule "Fabrication minimum clearance"
+  (constraint clearance (min 0.20mm)))
+
+(rule "Fabrication minimum track width"
+  (constraint track_width (min 0.20mm)))
+
+(rule "Fabrication silk to copper clearance"
+  (constraint silk_clearance (min 0.15mm)))
+`;
+  }
+
+  return `(version 1)
+
+(rule "Minimum copper clearance"
+  (constraint clearance (min 0.20mm)))
+`;
 }

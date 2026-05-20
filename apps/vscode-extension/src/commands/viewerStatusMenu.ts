@@ -10,9 +10,12 @@ export interface StatusMenuItem {
   label: string;
   description?: string;
   detail?: string;
-  command: string;
+  command?: string;
   args?: unknown[];
+  kind?: number;
 }
+
+const QUICK_PICK_SEPARATOR = -1;
 
 export function buildStatusMenuItems(options: {
   trusted: boolean;
@@ -27,36 +30,42 @@ export function buildStatusMenuItems(options: {
     ? `${snapshot.erc.errors} errors, ${snapshot.erc.warnings} warnings, ${snapshot.erc.infos} info`
     : 'No ERC result yet';
 
-  return [
+  const statusItem = trusted
+    ? cli
+      ? {
+          label: '$(circuit-board) KiCad detected',
+          description: cli.versionLabel,
+          detail: `${cli.path} (${cli.source})`
+        }
+      : {
+          label: '$(warning) kicad-cli not detected',
+          description: 'configure required',
+          detail: 'Install KiCad or configure kicadstudio.kicadCliPath.'
+        }
+    : {
+        label: '$(shield) Restricted Mode',
+        description: 'workspace trust required',
+        detail:
+          'Trust this workspace before detecting kicad-cli or launching KiCad tooling.'
+      };
+
+  const items: StatusMenuItem[] = [
+    separator('Status'),
+    statusItem,
+    separator('Validate'),
     {
-      label: trusted
-        ? cli
-          ? `$(check) ${cli.versionLabel}`
-          : '$(warning) kicad-cli not found'
-        : '$(shield) Restricted Mode',
-      description: trusted
-        ? (cli?.source ?? 'configure')
-        : 'workspace trust required',
-      detail: trusted
-        ? (cli?.path ?? 'Install KiCad or configure kicadstudio.kicadCliPath.')
-        : 'Trust this workspace before detecting kicad-cli or launching KiCad tooling.',
-      command: trusted
-        ? cli
-          ? COMMANDS.detectCli
-          : 'workbench.action.openSettings'
-        : 'workbench.trust.manage',
-      args: trusted ? (cli ? [] : [SETTINGS.cliPath]) : []
-    },
-    {
-      label: '$(beaker) Run DRC',
+      label: '$(beaker) Run board DRC',
       description: drcDetail,
+      detail: diagnosticScope(snapshot.drc, 'Board design rules'),
       command: COMMANDS.runDRC
     },
     {
-      label: '$(pulse) Run ERC',
+      label: '$(pulse) Run schematic ERC',
       description: ercDetail,
+      detail: diagnosticScope(snapshot.erc, 'Schematic electrical rules'),
       command: COMMANDS.runERC
     },
+    separator('Export'),
     { label: '$(package) Export Gerbers', command: COMMANDS.exportGerbers },
     {
       label: '$(archive) Export Manufacturing Package',
@@ -67,19 +76,57 @@ export function buildStatusMenuItems(options: {
       label: '$(plug) Setup MCP Integration',
       command: COMMANDS.setupMcpIntegration
     },
+    separator('Libraries'),
     { label: '$(search) Search Component', command: COMMANDS.searchComponent },
-    {
-      label: '$(comment-discussion) Open AI Chat',
-      command: COMMANDS.openAiChat
-    },
     {
       label: '$(search) Search Library Symbol',
       command: COMMANDS.searchLibrarySymbol
     },
     { label: '$(git-compare) Show Visual Diff', command: COMMANDS.showDiff },
+    separator('AI & MCP'),
+    {
+      label: '$(comment-discussion) Open AI Chat',
+      command: COMMANDS.openAiChat
+    },
+    separator('Settings'),
+    trusted
+      ? cli
+        ? {
+            label: '$(refresh) Re-detect kicad-cli',
+            description: cli.source,
+            command: COMMANDS.detectCli
+          }
+        : {
+            label: '$(settings-gear) Configure kicad-cli path',
+            description: 'required before KiCad commands can run',
+            command: 'workbench.action.openSettings',
+            args: [SETTINGS.cliPath]
+          }
+      : {
+          label: '$(shield) Manage Workspace Trust',
+          description: 'required before KiCad commands can run',
+          command: 'workbench.trust.manage',
+          args: []
+        },
     {
       label: '$(settings-gear) Open KiCad Studio Settings',
       command: COMMANDS.openSettings
     }
   ];
+
+  return items;
+}
+
+function separator(label: string): StatusMenuItem {
+  return { label, kind: QUICK_PICK_SEPARATOR };
+}
+
+function diagnosticScope(
+  summary: DiagnosticSummary | undefined,
+  fallback: string
+): string {
+  if (!summary) {
+    return `${fallback}: no cached result yet.`;
+  }
+  return `${fallback}: ${summary.file}`;
 }

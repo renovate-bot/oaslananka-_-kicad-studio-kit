@@ -98,6 +98,11 @@ button:active {
   opacity: 0.85;
 }
 
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 /* ── Statsbar ── */
 #statsbar {
   display: flex;
@@ -114,6 +119,10 @@ button:active {
 #table-wrapper {
   overflow: auto;
   min-height: 0;
+}
+
+#table-wrapper.hidden {
+  display: none;
 }
 
 table {
@@ -209,10 +218,13 @@ tbody tr.selected {
 /* ── Empty / error state ── */
 #bom-empty {
   display: none;
-  padding: 32px 16px;
-  text-align: center;
+  margin: 18px 10px;
+  padding: 16px;
   color: var(--muted);
   font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
 }
 
 #bom-empty.visible {

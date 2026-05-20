@@ -5,15 +5,52 @@
   const rowsEl = document.getElementById('bom-rows');
   const summaryText = document.getElementById('summary-text');
   const loadingRow = document.getElementById('loading-row');
+  const emptyState = document.getElementById('bom-empty');
+  const tableWrapper = document.getElementById('table-wrapper');
+  const exportCsv = document.getElementById('btn-export-csv');
+  const exportXlsx = document.getElementById('btn-export-xlsx');
   const headers = [...document.querySelectorAll('th[data-key]')];
 
-  function setLoading(loading) {
+  function setLoading(loading, message = 'Loading BOM...') {
     loadingRow.classList.toggle('visible', loading);
     loadingRow.setAttribute('aria-busy', loading ? 'true' : 'false');
+    if (loading) {
+      summaryText.textContent = message;
+      emptyState.classList.remove('visible');
+      tableWrapper.classList.add('hidden');
+    }
+    syncExportState(loading);
   }
   let entries = [];
   let sortKey = 'references';
   let sortDir = 1;
+  let isLoading = false;
+
+  function syncExportState(loading = isLoading) {
+    const disabled = loading || entries.length === 0;
+    exportCsv.disabled = disabled;
+    exportXlsx.disabled = disabled;
+    exportCsv.title = disabled
+      ? 'Export is available after BOM rows are loaded.'
+      : 'Export BOM as CSV';
+    exportXlsx.title = disabled
+      ? 'Export is available after BOM rows are loaded.'
+      : 'Export BOM as XLSX';
+  }
+
+  function showEmpty(message) {
+    rowsEl.replaceChildren();
+    emptyState.textContent = message;
+    emptyState.classList.add('visible');
+    tableWrapper.classList.add('hidden');
+    syncExportState(false);
+  }
+
+  function showTable() {
+    emptyState.classList.remove('visible');
+    tableWrapper.classList.remove('hidden');
+    syncExportState(false);
+  }
 
   function rowMatches(entry, query) {
     const text = [
@@ -140,9 +177,11 @@
   search.addEventListener('input', render);
   toggleDnp.addEventListener('change', render);
   document.getElementById('btn-export-csv').addEventListener('click', () => {
+    if (exportCsv.disabled) return;
     vscode.postMessage({ type: 'exportCsv' });
   });
   document.getElementById('btn-export-xlsx').addEventListener('click', () => {
+    if (exportXlsx.disabled) return;
     vscode.postMessage({ type: 'exportXlsx' });
   });
 
@@ -151,14 +190,18 @@
     if (message.type === 'setStatus') {
       const payload = message.payload || {};
       if (payload.status === 'loading') {
-        summaryText.textContent = 'Loading BOM...';
+        isLoading = true;
         setLoading(true);
       } else {
+        isLoading = false;
         setLoading(false);
-        summaryText.textContent = payload.text || 'No schematic opened.';
+        const text = payload.text || 'No schematic opened.';
+        summaryText.textContent = text;
+        showEmpty(text);
       }
     }
     if (message.type === 'setData') {
+      isLoading = false;
       setLoading(false);
       entries = message.payload.entries || [];
       const summary = message.payload.summary || {
@@ -167,8 +210,10 @@
       };
       if (entries.length === 0) {
         summaryText.textContent = 'No components found.';
+        showEmpty('No components found in the active schematic.');
       } else {
         summaryText.textContent = `${summary.totalComponents} components · ${summary.uniqueValues} unique rows`;
+        showTable();
       }
       render();
     }

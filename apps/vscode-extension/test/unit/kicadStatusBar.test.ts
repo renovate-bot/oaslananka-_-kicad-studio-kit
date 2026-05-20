@@ -90,10 +90,10 @@ describe('KiCadStatusBar', () => {
   });
 
   describe('DRC item (index 1)', () => {
-    it('shows pending dash when DRC has not been run', () => {
+    it('hides DRC when it has not been run', () => {
       const bar = makeBar();
       bar.update({});
-      expect(item(1).text).toContain('—');
+      expect(item(1).hide).toHaveBeenCalled();
       bar.dispose();
     });
 
@@ -102,6 +102,7 @@ describe('KiCadStatusBar', () => {
       bar.update({ drc: makeDrc({ errors: 5, warnings: 2 }) });
       expect(item(1).text).toContain('5');
       expect(item(1).text).toContain('error');
+      expect(item(1).tooltip).toContain('board.kicad_pcb');
       bar.dispose();
     });
 
@@ -136,10 +137,10 @@ describe('KiCadStatusBar', () => {
   });
 
   describe('ERC item (index 2)', () => {
-    it('shows pending dash when ERC has not been run', () => {
+    it('hides ERC when it has not been run', () => {
       const bar = makeBar();
       bar.update({});
-      expect(item(2).text).toContain('—');
+      expect(item(2).hide).toHaveBeenCalled();
       bar.dispose();
     });
 
@@ -156,6 +157,7 @@ describe('KiCadStatusBar', () => {
       bar.update({ erc: makeErc({ errors: 2, warnings: 0 }) });
       expect(item(2).text).toContain('2');
       expect(item(2).text).toContain('error');
+      expect(item(2).tooltip).toContain('demo.kicad_sch');
       bar.dispose();
     });
 

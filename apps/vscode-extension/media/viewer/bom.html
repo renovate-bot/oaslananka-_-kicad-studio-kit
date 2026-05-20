@@ -40,8 +40,8 @@
     <div id="topbar">
       <input id="search" aria-label="Search BOM" placeholder="Search reference, value, footprint…">
       <label title="Exclude Do Not Populate parts"><input id="toggle-dnp" type="checkbox"> Hide DNP</label>
-      <button id="btn-export-csv" aria-label="Export BOM as CSV">CSV</button>
-      <button id="btn-export-xlsx" aria-label="Export BOM as XLSX">XLSX</button>
+      <button id="btn-export-csv" aria-label="Export BOM as CSV" disabled>CSV</button>
+      <button id="btn-export-xlsx" aria-label="Export BOM as XLSX" disabled>XLSX</button>
     </div>
     <div id="statsbar">
       <span id="summary-text" class="muted">Loading...</span>
@@ -49,6 +49,9 @@
     <div id="loading-row" role="status" aria-live="polite">
       <div class="spinner" aria-hidden="true"></div>
       <span>Loading BOM...</span>
+    </div>
+    <div id="bom-empty" role="status" aria-live="polite">
+      Open a schematic to load the Bill of Materials.
     </div>
     <div id="table-wrapper">
       <table>

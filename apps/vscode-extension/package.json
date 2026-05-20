@@ -226,66 +226,66 @@
         {
           "id": "kicadstudio.projectTree",
           "name": "KiCad Project",
-          "icon": "assets/icon-dark.png"
+          "icon": "assets/views/project-tree.svg"
         },
         {
           "id": "kicadstudio.validation",
           "name": "Validation",
           "when": "kicadstudio.hasProject",
-          "icon": "assets/icon-dark.png"
+          "icon": "assets/views/validation.svg"
         },
         {
           "id": "kicadstudio.qualityGate",
           "name": "Quality Gates",
           "when": "kicadstudio.hasProject",
-          "icon": "assets/icon-dark.png"
+          "icon": "assets/views/quality-gates.svg"
         },
         {
           "id": "kicadstudio.bomView",
           "name": "Bill of Materials",
           "type": "webview",
           "when": "kicadstudio.hasProject",
-          "icon": "assets/icon-dark.png"
+          "icon": "assets/views/bom.svg"
         },
         {
           "id": "kicadstudio.netlistView",
           "name": "Netlist",
           "type": "webview",
           "when": "kicadstudio.hasProject",
-          "icon": "assets/icon-dark.png"
+          "icon": "assets/views/netlist.svg"
         },
         {
           "id": "kicadstudio.variants",
           "name": "Variants",
           "when": "kicadstudio.hasProject && kicadstudio.kicad10Plus",
-          "icon": "assets/icon-dark.png"
+          "icon": "assets/views/variants.svg"
         },
         {
           "id": "kicadstudio.library",
           "name": "Library",
-          "icon": "assets/icon-dark.png"
+          "icon": "assets/views/library.svg"
         },
         {
           "id": "kicadstudio.drcRules",
           "name": "DRC Rules",
           "when": "kicadstudio.hasProject",
-          "icon": "assets/icon-dark.png"
+          "icon": "assets/views/drc-rules.svg"
         },
         {
           "id": "kicadstudio.fixQueue",
           "name": "AI Fix Queue",
           "when": "kicadstudio.mcpConnected",
-          "icon": "assets/icon-dark.png"
+          "icon": "assets/views/fix-queue.svg"
         },
         {
           "id": "kicadstudio.componentSearch",
           "name": "Component Search",
-          "icon": "assets/icon-dark.png"
+          "icon": "assets/views/component-search.svg"
         },
         {
           "id": "kicadstudio.mcpTools",
           "name": "MCP & Tools",
-          "icon": "assets/icon-dark.png"
+          "icon": "assets/views/mcp-tools.svg"
         }
       ]
     },
@@ -369,7 +369,7 @@
       },
       {
         "view": "kicadstudio.drcRules",
-        "contents": "No `.kicad_dru` rule file found in the workspace.\n\n[Add DRC Rule with AI](command:kicadstudio.drcRule.addWithMcp)\n[Open Docs](command:kicadstudio.qualityGate.openDocs)",
+        "contents": "No `.kicad_dru` rule file found in the active project.\n\n[Create .kicad_dru](command:kicadstudio.drcRule.createDefault)\n[Import starter template](command:kicadstudio.drcRule.importTemplate)\n[Add DRC Rule with AI](command:kicadstudio.drcRule.addWithMcp)\n[Open KiCad design rules docs](command:kicadstudio.qualityGate.openDocs)",
         "when": "kicadstudio.hasProject"
       },
       {
@@ -766,6 +766,18 @@
         "category": "KiCad DRC"
       },
       {
+        "command": "kicadstudio.drcRule.createDefault",
+        "title": "KiCad: Create .kicad_dru File",
+        "category": "KiCad DRC",
+        "icon": "$(new-file)"
+      },
+      {
+        "command": "kicadstudio.drcRule.importTemplate",
+        "title": "KiCad: Import .kicad_dru Starter Template",
+        "category": "KiCad DRC",
+        "icon": "$(file-code)"
+      },
+      {
         "command": "kicadstudio.drcRule.addWithMcp",
         "title": "KiCad: Add DRC Rule with MCP",
         "category": "KiCad DRC",
@@ -891,6 +903,16 @@
         {
           "when": "view == kicadstudio.drcRules && kicadstudio.workspaceTrusted && kicadstudio.mcpConnected",
           "command": "kicadstudio.drcRule.addWithMcp",
+          "group": "navigation"
+        },
+        {
+          "when": "view == kicadstudio.drcRules && kicadstudio.workspaceTrusted",
+          "command": "kicadstudio.drcRule.createDefault",
+          "group": "navigation"
+        },
+        {
+          "when": "view == kicadstudio.drcRules && kicadstudio.workspaceTrusted",
+          "command": "kicadstudio.drcRule.importTemplate",
           "group": "navigation"
         }
       ],
@@ -1033,6 +1055,14 @@
         {
           "command": "kicadstudio.drcRule.addWithMcp",
           "when": "kicadstudio.workspaceTrusted && kicadstudio.mcpConnected"
+        },
+        {
+          "command": "kicadstudio.drcRule.createDefault",
+          "when": "kicadstudio.workspaceTrusted"
+        },
+        {
+          "command": "kicadstudio.drcRule.importTemplate",
+          "when": "kicadstudio.workspaceTrusted"
         },
         {
           "command": "kicadstudio.variant.create",

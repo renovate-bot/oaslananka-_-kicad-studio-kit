@@ -82,6 +82,8 @@ suite('Extension Integration', () => {
       'kicadstudio.variant.diffBom',
       'kicadstudio.variant.refresh',
       'kicadstudio.drcRule.reveal',
+      'kicadstudio.drcRule.createDefault',
+      'kicadstudio.drcRule.importTemplate',
       'kicadstudio.drcRule.addWithMcp',
       'kicadstudio.exportViewerSvg',
       'kicadstudio.importPads',
