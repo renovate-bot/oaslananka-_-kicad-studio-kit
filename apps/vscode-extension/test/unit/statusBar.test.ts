@@ -6,11 +6,29 @@ import { KiCadStatusBar } from '../../src/statusbar/kicadStatusBar';
 import { window } from './vscodeMock';
 
 // Item indices in allItems(): kicad=0, drc=1, erc=2, sep1=3, ai=4, mcp=5, sep2=6, variant=7
-const IDX = { kicad: 0, drc: 1, erc: 2, sep1: 3, ai: 4, mcp: 5, sep2: 6, variant: 7 };
+const IDX = {
+  kicad: 0,
+  drc: 1,
+  erc: 2,
+  sep1: 3,
+  ai: 4,
+  mcp: 5,
+  sep2: 6,
+  variant: 7
+};
 
 function getItems() {
   const mock = window.createStatusBarItem as jest.Mock;
-  return mock.mock.results.map((r) => r.value as { text: string; tooltip: string; backgroundColor?: unknown; show: jest.Mock; hide: jest.Mock });
+  return mock.mock.results.map(
+    (r) =>
+      r.value as {
+        text: string;
+        tooltip: string;
+        backgroundColor?: unknown;
+        show: jest.Mock;
+        hide: jest.Mock;
+      }
+  );
 }
 
 describe('KiCadStatusBar', () => {
@@ -20,7 +38,9 @@ describe('KiCadStatusBar', () => {
 
   it('creates eight status bar items', () => {
     const bar = new KiCadStatusBar({} as never);
-    expect((window.createStatusBarItem as jest.Mock).mock.calls).toHaveLength(8);
+    expect((window.createStatusBarItem as jest.Mock).mock.calls).toHaveLength(
+      8
+    );
     bar.dispose();
   });
 
@@ -37,9 +57,26 @@ describe('KiCadStatusBar', () => {
   it('renders full state: cli + drc warning + erc error + ai unhealthy + mcp connected', () => {
     const bar = new KiCadStatusBar({} as never);
     bar.update({
-      cli: { path: '/opt/kicad/kicad-cli', version: '10.0.1', versionLabel: 'KiCad 10.0.1', source: 'path' },
-      drc: { file: 'board.kicad_pcb', errors: 0, warnings: 1, infos: 0, source: 'drc' },
-      erc: { file: 'board.kicad_sch', errors: 2, warnings: 0, infos: 0, source: 'erc' },
+      cli: {
+        path: '/opt/kicad/kicad-cli',
+        version: '10.0.1',
+        versionLabel: 'KiCad 10.0.1',
+        source: 'path'
+      },
+      drc: {
+        file: 'board.kicad_pcb',
+        errors: 0,
+        warnings: 1,
+        infos: 0,
+        source: 'drc'
+      },
+      erc: {
+        file: 'board.kicad_sch',
+        errors: 2,
+        warnings: 0,
+        infos: 0,
+        source: 'erc'
+      },
       aiConfigured: true,
       aiHealthy: false,
       mcpState: { kind: 'Connected', available: true, connected: true }
@@ -58,8 +95,20 @@ describe('KiCadStatusBar', () => {
   it('renders pass states for drc and erc', () => {
     const bar = new KiCadStatusBar({} as never);
     bar.update({
-      drc: { file: 'board.kicad_pcb', errors: 0, warnings: 0, infos: 0, source: 'drc' },
-      erc: { file: 'board.kicad_sch', errors: 0, warnings: 0, infos: 0, source: 'erc' },
+      drc: {
+        file: 'board.kicad_pcb',
+        errors: 0,
+        warnings: 0,
+        infos: 0,
+        source: 'drc'
+      },
+      erc: {
+        file: 'board.kicad_sch',
+        errors: 0,
+        warnings: 0,
+        infos: 0,
+        source: 'erc'
+      },
       aiConfigured: true,
       aiHealthy: true
     });
@@ -100,7 +149,7 @@ describe('KiCadStatusBar', () => {
         available: true,
         connected: true,
         server: {
-          version: '3.0.0',
+          version: '1.0.0',
           compat: 'warn',
           capturedAt: new Date().toISOString(),
           capabilities: { tools: [], resources: [], prompts: [] }
@@ -109,7 +158,7 @@ describe('KiCadStatusBar', () => {
     });
     const items = getItems();
     expect(items[IDX.mcp]!.text).toContain('MCP');
-    expect(items[IDX.mcp]!.tooltip).toContain('3.0.0');
+    expect(items[IDX.mcp]!.tooltip).toContain('1.0.0');
     bar.dispose();
   });
 
@@ -124,8 +173,19 @@ describe('KiCadStatusBar', () => {
   it('snapshot returns cli, drc, erc, ai, mcp state', () => {
     const bar = new KiCadStatusBar({} as never);
     bar.update({
-      cli: { path: '/bin/kicad-cli', version: '10.0.0', versionLabel: 'KiCad 10.0.0', source: 'path' },
-      drc: { file: 'board.kicad_pcb', errors: 1, warnings: 0, infos: 0, source: 'drc' },
+      cli: {
+        path: '/bin/kicad-cli',
+        version: '10.0.0',
+        versionLabel: 'KiCad 10.0.0',
+        source: 'path'
+      },
+      drc: {
+        file: 'board.kicad_pcb',
+        errors: 1,
+        warnings: 0,
+        infos: 0,
+        source: 'drc'
+      },
       aiConfigured: true,
       aiHealthy: true,
       mcpState: { kind: 'Connected', available: true, connected: true }

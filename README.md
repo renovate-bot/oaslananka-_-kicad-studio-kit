@@ -47,3 +47,4 @@ Publishing is handled by GitHub Actions workflows under `.github/workflows`. Ext
 ## Maintenance
 
 Dependency update policy, dashboard triage, and security-update handling are documented in [docs/dependency-lifecycle.md](docs/dependency-lifecycle.md).
+Compatibility support states and release gates are documented in [docs/support-matrix.md](docs/support-matrix.md).

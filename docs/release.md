@@ -11,3 +11,5 @@ The `1.0.0` baseline is represented in:
 - `packages/mcp-npm/package.json`
 
 Release PRs are created by `.github/workflows/release-please.yml`. Release publication workflows run from GitHub Releases and protected environments.
+
+Release dry-runs also validate `compatibility.yaml` through the MCP server release preflight. Update [docs/support-matrix.md](support-matrix.md) and release notes whenever KiCad, VS Code, MCP, Node, pnpm, Python, or tool-schema support changes.

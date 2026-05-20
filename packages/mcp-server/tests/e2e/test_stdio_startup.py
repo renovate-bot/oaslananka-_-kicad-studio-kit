@@ -8,6 +8,8 @@ import sys
 import threading
 import time
 
+from kicad_mcp.compatibility import MCP_PROTOCOL_VERSION
+
 STDIO_STARTUP_TIMEOUT_SECONDS = 10.0
 
 
@@ -42,7 +44,7 @@ def test_stdio_initialize_does_not_require_client_warmup() -> None:
         "id": 1,
         "method": "initialize",
         "params": {
-            "protocolVersion": "2024-11-05",
+            "protocolVersion": MCP_PROTOCOL_VERSION,
             "capabilities": {},
             "clientInfo": {"name": "stdio-startup-test", "version": "0"},
         },

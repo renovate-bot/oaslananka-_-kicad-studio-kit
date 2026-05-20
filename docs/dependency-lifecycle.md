@@ -66,7 +66,7 @@ Product-specific checks:
 - npm wrapper updates: `Push-Location packages/mcp-npm; npm pack --dry-run; Pop-Location`.
 - Root, CI, or release updates: root checks plus affected workflow commands.
 
-Compatibility-sensitive updates must also run the relevant contract or fixture tests before merge. If `compatibility.yaml` exists, update it in the same PR. Until the compatibility matrix file lands, update the nearest support matrix or release note that describes the changed support boundary.
+Compatibility-sensitive updates must also run the relevant contract or fixture tests before merge. If support boundaries change, update `compatibility.yaml`, [support-matrix.md](support-matrix.md), and the nearest release note in the same PR.
 
 ## Security updates
 

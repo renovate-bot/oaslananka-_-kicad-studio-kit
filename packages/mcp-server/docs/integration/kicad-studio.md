@@ -1,8 +1,8 @@
 # KiCad Studio
 
-`kicad-studio` remains a separate repository. It should discover and launch this
-server through the public CLI and MCP surfaces instead of importing Python
-modules from this repository.
+KiCad Studio lives in this monorepo under `apps/vscode-extension`. It should
+discover and launch this server through the public CLI and MCP surfaces instead
+of importing Python modules from `packages/mcp-server`.
 
 ## CLI Contract
 
@@ -41,10 +41,9 @@ Stable fields for extension consumption:
 
 ## Compatibility
 
-| kicad-studio | kicad-mcp-pro | Notes |
-|---|---|---|
-| 2.7.x | >=3.1.4,<4.0 | Recommended HTTP bridge contract: local port `27185`, Streamable HTTP endpoint `/mcp`, optional legacy `/sse` only when explicitly enabled |
-| 0.x-2.6.x | >=3.0,<4.0 | Initial CLI health/doctor contract |
+| KiCad Studio | kicad-mcp-pro  | Notes                                                                                                                                      |
+| ------------ | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1.0.x        | >=1.0.0,<2.0.0 | Recommended HTTP bridge contract: local port `27185`, Streamable HTTP endpoint `/mcp`, optional legacy `/sse` only when explicitly enabled |
 
 ## Recommended HTTP Bridge Environment
 
@@ -79,4 +78,4 @@ is intentionally disabled by default; clients that still require
 - `kicad://studio/context` is the resource that agents can read directly.
 - `KICAD_MCP_STUDIO_WATCH_DIR` watches for `.kicad_pro` updates and auto-selects the active project.
 - `KICAD_MCP_WORKSPACE_ROOT` constrains project artifact reads and writes for safe extension-driven operation.
-- The manufacturing release help link used by KiCad Studio is `https://oaslananka.github.io/kicad-studio-kit/workflows/manufacturing-export/`; the canonical repository publishes that path through the docs workflow.
+- The manufacturing release help link used by KiCad Studio is `https://oaslananka.github.io/kicad-studio-kit/mcp/workflows/manufacturing-export/`; the canonical repository publishes that path through the docs workflow.

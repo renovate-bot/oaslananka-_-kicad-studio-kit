@@ -1,0 +1,115 @@
+schemaVersion: 1
+updated: "2026-05-20"
+source: "https://github.com/oaslananka/kicad-studio-kit"
+
+kicad:
+  primary: "10.0.x"
+  latestVerified: "10.0.1"
+  supported:
+    - range: "10.0.x"
+      state: "primary"
+      ci: "required"
+      notes: "Primary optimized KiCad CLI and file-format target."
+    - range: "9.x"
+      state: "supported"
+      ci: "scheduled"
+      notes: "Core PCB, schematic, validation, and export workflows remain supported."
+    - range: "8.x"
+      state: "deprecated"
+      ci: "manual"
+      notes: "File-level read and migration support only; removal requires a release note."
+  dropped: []
+
+vscode:
+  minimum: "1.99.0"
+  enginesRange: "^1.99.0"
+  stable: "current"
+  insiders: "current"
+  nodeRuntime: "24.x"
+  state: "primary"
+
+node:
+  range: ">=24.11.0 <25"
+  primary: "24.x"
+
+pnpm:
+  range: ">=11.0.0 <12"
+  primary: "11.x"
+
+python:
+  range: ">=3.12"
+  primary: "3.12"
+  supported:
+    - "3.12"
+    - "3.13"
+
+mcp:
+  protocolVersion: "2025-11-25"
+  toolSchema: "1.0"
+  registrySchema: "2025-12-11"
+
+products:
+  kicad-studio:
+    packagePath: "apps/vscode-extension/package.json"
+    version: "1.0.0"
+    compatibleMcpPro:
+      required: ">=1.0.0 <2.0.0"
+      recommended: ">=1.0.0 <2.0.0"
+      testedAgainst: "1.0.0"
+  kicad-mcp-pro:
+    packagePath: "packages/mcp-server/pyproject.toml"
+    version: "1.0.0"
+    compatibleExtension:
+      required: ">=1.0.0 <2.0.0"
+      testedAgainst: "1.0.0"
+
+featureGates:
+  projectDiscovery:
+    kicad: ["8.x", "9.x", "10.0.x"]
+    tools: ["kicad_get_project_info", "kicad_set_project"]
+  schematicRead:
+    kicad: ["8.x", "9.x", "10.0.x"]
+    tools: ["sch_get_symbols"]
+  pcbRead:
+    kicad: ["8.x", "9.x", "10.0.x"]
+    tools: ["pcb_get_board_summary"]
+  manufacturingExports:
+    kicad: ["9.x", "10.0.x"]
+    tools: ["export_gerber", "export_drill", "export_manufacturing_package"]
+  kicad10Variants:
+    kicad: ["10.0.x"]
+    tools: ["variant_list", "variant_set_active"]
+  kicad10AdvancedExports:
+    kicad: ["10.0.x"]
+    tools: ["export_odb", "pcb_export_3d_pdf"]
+
+mcpTools:
+  required:
+    - "kicad_get_version"
+    - "kicad_get_project_info"
+    - "kicad_set_project"
+    - "sch_get_symbols"
+    - "pcb_get_board_summary"
+    - "export_gerber"
+    - "export_drill"
+    - "export_manufacturing_package"
+  optional:
+    - "variant_list"
+    - "variant_set_active"
+    - "export_odb"
+    - "pcb_export_3d_pdf"
+    - "dfm_run_manufacturer_check"
+
+releaseGate:
+  required:
+    - "compatibility.yaml validates"
+    - "Product versions match release manifests"
+    - "Extension MCP compatibility range matches embedded compatibility metadata"
+    - "MCP protocol and tool schema metadata match server discovery metadata"
+    - "Required MCP tools exist in the generated tool reference"
+    - "KiCad, VS Code, Node, pnpm, and Python support ranges match package metadata"
+  blockers:
+    - "Primary KiCad compatibility failure"
+    - "VS Code stable compatibility failure"
+    - "MCP protocol or required tool contract failure"
+    - "Missing or inconsistent compatibility metadata"

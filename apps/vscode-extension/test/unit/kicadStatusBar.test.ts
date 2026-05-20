@@ -1,5 +1,6 @@
 import { KiCadStatusBar } from '../../src/statusbar/kicadStatusBar';
 import type { DiagnosticSummary } from '../../src/types';
+import { window } from './vscodeMock';
 
 type ItemMock = {
   text: string;
@@ -16,42 +17,54 @@ type ItemMock = {
 const items: Record<string, ItemMock> = {};
 let itemIndex = 0;
 
-jest.mock('vscode', () => {
-  const original = jest.requireActual('../unit/vscodeMock');
-  return {
-    ...original,
-    window: {
-      ...original.window,
-      createStatusBarItem: jest.fn(() => {
-        const key = String(itemIndex++);
-        const item = {
-          text: '',
-          tooltip: '',
-          backgroundColor: undefined as unknown,
-          color: undefined,
-          command: undefined as unknown,
-          show: jest.fn(),
-          hide: jest.fn(),
-          dispose: jest.fn()
-        };
-        items[key] = item;
-        return item;
-      })
-    }
-  };
-}, { virtual: true });
-
-function makeDrc(overrides: Partial<DiagnosticSummary> = {}): DiagnosticSummary {
-  return { file: 'board.kicad_pcb', errors: 0, warnings: 0, infos: 0, source: 'drc', ...overrides };
+function resetStatusBarItemMock(): void {
+  itemIndex = 0;
+  Object.keys(items).forEach((key) => delete items[key]);
+  (window.createStatusBarItem as jest.Mock).mockImplementation(() => {
+    const key = String(itemIndex++);
+    const item = {
+      text: '',
+      tooltip: '',
+      backgroundColor: undefined as unknown,
+      color: undefined,
+      command: undefined as unknown,
+      show: jest.fn(),
+      hide: jest.fn(),
+      dispose: jest.fn()
+    };
+    items[key] = item;
+    return item;
+  });
 }
 
-function makeErc(overrides: Partial<DiagnosticSummary> = {}): DiagnosticSummary {
-  return { file: 'demo.kicad_sch', errors: 0, warnings: 0, infos: 0, source: 'erc', ...overrides };
+function makeDrc(
+  overrides: Partial<DiagnosticSummary> = {}
+): DiagnosticSummary {
+  return {
+    file: 'board.kicad_pcb',
+    errors: 0,
+    warnings: 0,
+    infos: 0,
+    source: 'drc',
+    ...overrides
+  };
+}
+
+function makeErc(
+  overrides: Partial<DiagnosticSummary> = {}
+): DiagnosticSummary {
+  return {
+    file: 'demo.kicad_sch',
+    errors: 0,
+    warnings: 0,
+    infos: 0,
+    source: 'erc',
+    ...overrides
+  };
 }
 
 function makeBar(): KiCadStatusBar {
-  itemIndex = 0;
-  Object.keys(items).forEach((k) => delete items[k]);
+  resetStatusBarItemMock();
   return new KiCadStatusBar({} as never);
 }
 
@@ -73,7 +86,12 @@ describe('KiCadStatusBar', () => {
     it('shows version label when cli is detected', () => {
       const bar = makeBar();
       bar.update({
-        cli: { path: '/usr/bin/kicad-cli', version: '10.0.3', versionLabel: 'KiCad 10.0.3', source: 'path' }
+        cli: {
+          path: '/usr/bin/kicad-cli',
+          version: '10.0.3',
+          versionLabel: 'KiCad 10.0.3',
+          source: 'path'
+        }
       });
       expect(item(0).text).toContain('10.0.3');
       bar.dispose();
@@ -82,7 +100,12 @@ describe('KiCadStatusBar', () => {
     it('shows circuit-board icon when cli is detected', () => {
       const bar = makeBar();
       bar.update({
-        cli: { path: '/usr/bin/kicad-cli', version: '7.0.0', versionLabel: 'KiCad 7.0.0', source: 'path' }
+        cli: {
+          path: '/usr/bin/kicad-cli',
+          version: '7.0.0',
+          versionLabel: 'KiCad 7.0.0',
+          source: 'path'
+        }
       });
       expect(item(0).text).toContain('circuit-board');
       bar.dispose();
@@ -222,7 +245,12 @@ describe('KiCadStatusBar', () => {
           kind: 'Incompatible',
           available: true,
           connected: false,
-          server: { version: '1.2.3', compat: 'incompatible', capabilities: { tools: [], resources: [], prompts: [] }, capturedAt: '' }
+          server: {
+            version: '1.2.3',
+            compat: 'incompatible',
+            capabilities: { tools: [], resources: [], prompts: [] },
+            capturedAt: ''
+          }
         }
       });
       expect(item(5).text).toContain('MCP');
@@ -270,7 +298,12 @@ describe('KiCadStatusBar', () => {
     it('preserves previous fields when partial update is applied', () => {
       const bar = makeBar();
       bar.update({
-        cli: { path: '/bin/kicad-cli', version: '10.0.0', versionLabel: 'KiCad 10.0.0', source: 'path' }
+        cli: {
+          path: '/bin/kicad-cli',
+          version: '10.0.0',
+          versionLabel: 'KiCad 10.0.0',
+          source: 'path'
+        }
       });
       bar.update({ aiConfigured: true });
       const snap = bar.getSnapshot();

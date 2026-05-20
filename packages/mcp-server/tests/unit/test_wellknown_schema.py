@@ -21,6 +21,8 @@ def test_wellknown_payload_contains_required_server_card_fields() -> None:
     assert "toolCategories" in payload["capabilities"]
     assert "profiles" in payload["capabilities"]
     assert "experimentalTools" in payload["capabilities"]
+    assert payload["protocolVersion"] == payload["compatibility"]["mcp"]["protocolVersion"]
+    assert payload["compatibility"]["kicad"]["primary"] == "10.0.x"
     assert payload["categories"] == ["eda", "pcb", "kicad"]
     assert payload["docs"] == "https://oaslananka.github.io/kicad-studio-kit"
     assert payload["registry"] == "io.github.oaslananka/kicad-mcp-pro"

@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from . import __version__
+from .compatibility import MCP_PROTOCOL_VERSION, compatibility_summary
 from .config import get_config
 from .tools.router import (
     EXPERIMENTAL_TOOL_NAMES,
@@ -19,7 +20,7 @@ _SERVER_CARD_LAST_UPDATED = datetime.now(UTC).isoformat()
 def get_wellknown_metadata() -> dict[str, object]:
     """Return server discovery metadata for ``/.well-known/mcp-server``."""
     cfg = get_config()
-    protocol_version = "2025-11-25"
+    protocol_version = MCP_PROTOCOL_VERSION
     transport_type = "stdio" if cfg.transport == "stdio" else "streamable-http"
     endpoint = None
     if transport_type != "stdio":
@@ -58,7 +59,10 @@ def get_wellknown_metadata() -> dict[str, object]:
         "categories": ["eda", "pcb", "kicad"],
         "description": "Project-aware PCB and schematic workflows for KiCad",
         "profiles": available_profiles(),
-        "kicad_version_required": "10.x preferred, 9.x best effort",
+        "compatibility": compatibility_summary(),
+        "kicad_version_required": (
+            "10.0.x primary, 9.x supported, 8.x deprecated file-level fallback"
+        ),
         "docs": "https://oaslananka.github.io/kicad-studio-kit",
         "registry": "io.github.oaslananka/kicad-mcp-pro",
         "last_updated": _SERVER_CARD_LAST_UPDATED,

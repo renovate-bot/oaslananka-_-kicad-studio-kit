@@ -1,0 +1,110 @@
+name: Compatibility regression
+description: Report a new KiCad, VS Code, MCP, dependency, or release-tool compatibility failure
+labels: ["compatibility", "regression", "needs:reproduction"]
+body:
+  - type: dropdown
+    id: product
+    attributes:
+      label: Affected product
+      options:
+        - KiCad Studio VS Code extension
+        - KiCad MCP Pro server
+        - npm launcher wrapper
+        - Repository CI or release tooling
+        - Documentation site
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Affected platform or dependency
+      description: KiCad, VS Code, MCP protocol, Node, Python, pnpm, package, action, or release tool.
+      placeholder: KiCad CLI
+    validations:
+      required: true
+  - type: input
+    id: old-version
+    attributes:
+      label: Last working version
+      placeholder: "10.0.0"
+    validations:
+      required: true
+  - type: input
+    id: new-version
+    attributes:
+      label: Failing version
+      placeholder: "10.0.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: operating-system
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - GitHub Actions ubuntu-24.04
+        - GitHub Actions windows-2025
+        - GitHub Actions macos-15
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: kicad-cli
+    attributes:
+      label: KiCad CLI path and version
+      placeholder: "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe --version"
+  - type: input
+    id: vscode-version
+    attributes:
+      label: VS Code version
+      placeholder: "1.99.0"
+  - type: input
+    id: mcp-protocol
+    attributes:
+      label: MCP protocol and tool schema version
+      placeholder: "protocol 2025-11-25, tool schema 1.0"
+  - type: textarea
+    id: failing-command
+    attributes:
+      label: Failing command or workflow
+      description: Include the exact command, job name, or workflow URL.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs and generated reports
+      description: Redact secrets before pasting logs. Link artifacts when possible.
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: canary-run
+    attributes:
+      label: Canary workflow run link
+      placeholder: "https://github.com/oaslananka/kicad-studio-kit/actions/runs/..."
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - Release blocker
+        - Supported workflow broken
+        - Deprecated workflow broken
+        - Cosmetic or documentation drift
+    validations:
+      required: true
+  - type: checkboxes
+    id: triage-state
+    attributes:
+      label: Triage state
+      options:
+        - label: Needs reproduction
+        - label: Confirmed compatibility regression
+        - label: Upstream bug suspected
+        - label: Local workaround available
+        - label: Fixed in canary
+        - label: Release blocker

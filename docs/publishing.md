@@ -16,6 +16,8 @@ python -m pip index versions kicad-mcp-pro
 
 If `1.0.0` already exists on a target registry, the publish preflight must fail. Do not automatically bump the version.
 
+Before publishing, run `corepack pnpm run check:compatibility` and confirm `compatibility.yaml` matches the release notes and [support matrix](support-matrix.md).
+
 ## Required GitHub Environments
 
 - `extension-marketplaces`

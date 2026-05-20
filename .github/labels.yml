@@ -46,3 +46,21 @@
 - name: risk:high
   color: "b60205"
   description: Major, runtime, protocol, security, or compatibility-sensitive dependency update
+- name: needs:reproduction
+  color: "fbca04"
+  description: Compatibility regression report needs a maintainer reproduction
+- name: compat:confirmed-regression
+  color: "d73a4a"
+  description: Confirmed compatibility regression in a supported surface
+- name: upstream-bug
+  color: "5319e7"
+  description: Failure appears to be caused by an upstream project or platform
+- name: workaround
+  color: "c2e0c6"
+  description: Local workaround exists while the compatibility issue remains open
+- name: release-blocker
+  color: "b60205"
+  description: Blocks release until resolved or explicitly waived
+- name: fixed-in-canary
+  color: "0e8a16"
+  description: Compatibility issue is fixed in a canary or pre-release validation path

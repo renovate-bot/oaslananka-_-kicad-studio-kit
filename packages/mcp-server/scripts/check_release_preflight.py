@@ -10,6 +10,8 @@ import sys
 import tomllib
 from pathlib import Path
 
+from check_compatibility_matrix import validate_compatibility_matrix
+
 ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = ROOT.parents[1]
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$")
@@ -127,7 +129,11 @@ def _check_changelog(version: str) -> list[str]:
 
 def main() -> int:
     version = _project_version()
-    errors = [*_check_versions(), *_check_changelog(version)]
+    errors = [
+        *_check_versions(),
+        *_check_changelog(version),
+        *validate_compatibility_matrix(),
+    ]
     if errors:
         print("Release preflight failed:", file=sys.stderr)
         for error in errors:

@@ -8,8 +8,8 @@ authors:
 repository-code: "https://github.com/oaslananka/kicad-studio-kit"
 url: "https://oaslananka.github.io/kicad-studio-kit"
 license: MIT
-version: "3.0.2"
-date-released: "2026-04-27"
+version: "1.0.0"
+date-released: "2026-05-20"
 keywords:
   - KiCad
   - EDA

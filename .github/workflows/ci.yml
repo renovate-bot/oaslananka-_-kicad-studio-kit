@@ -32,6 +32,7 @@ jobs:
       - run: corepack pnpm install --frozen-lockfile
       - run: corepack pnpm run check:forbidden-refs
       - run: corepack pnpm run check:version
+      - run: corepack pnpm run check:compatibility
 
   vscode-extension:
     strategy:

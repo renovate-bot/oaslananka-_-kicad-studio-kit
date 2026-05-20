@@ -9,6 +9,7 @@ import * as net from 'node:net';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { MCP_COMPAT, isMcpVersionSupported } from '../../../src/mcp/compat';
+import { MCP_PROTOCOL_VERSION } from '../../../src/mcp/compatibilityMatrix';
 
 interface JsonRpcEnvelope<T> {
   result?: T;
@@ -248,8 +249,8 @@ async function waitForInitialize(
     }
     try {
       return await postJsonRpc<InitializeResult>(endpoint, 'initialize', {
-        protocolVersion: '2024-11-05',
-        clientInfo: { name: 'kicad-studio-real-server-test', version: '2.6.0' },
+        protocolVersion: MCP_PROTOCOL_VERSION,
+        clientInfo: { name: 'kicad-studio-real-server-test', version: '1.0.0' },
         capabilities: {}
       });
     } catch (error) {

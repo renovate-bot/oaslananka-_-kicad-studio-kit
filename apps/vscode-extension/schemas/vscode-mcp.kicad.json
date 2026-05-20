@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://oaslananka.github.io/kicad-studio/schemas/vscode-mcp.kicad.json",
+  "$id": "https://oaslananka.github.io/kicad-studio-kit/schemas/vscode-mcp.kicad.json",
   "title": "KiCad Studio MCP configuration",
   "type": "object",
   "properties": {
