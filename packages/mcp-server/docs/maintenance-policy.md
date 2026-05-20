@@ -33,12 +33,15 @@ and maintainer review.
 ## Security Scans
 
 Required gates are Ruff, mypy, pytest with coverage, Bandit, the pip-audit backed
-dependency audit, Gitleaks in CI, actionlint, and zizmor workflow checks. Safety
-is an additional optional Python supply-chain scan; it is not the only enforced
-dependency gate and local development must not require `SAFETY_API_KEY`.
+dependency audit, Gitleaks in CI, actionlint, and zizmor workflow checks. The
+dependency audit may only acknowledge exact package, version, and advisory
+combinations that have an upstream no-fix or metadata mismatch, and each
+acknowledgement must be recorded in `scripts/audit_dependencies.py` with
+authoritative source URLs.
 
 OSV Scanner, Trivy filesystem scans, Scorecard, CodeQL, Hadolint, and
-authenticated Safety scans are recommended scheduled or release-time checks.
+authenticated external supply-chain scans are recommended scheduled or
+release-time checks.
 
 ## Release Ownership
 

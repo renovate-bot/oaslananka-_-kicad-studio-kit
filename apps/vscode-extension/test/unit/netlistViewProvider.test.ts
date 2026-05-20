@@ -56,7 +56,6 @@ function injectView(
   provider: NetlistViewProvider,
   webview: ReturnType<typeof makeWebview>
 ): void {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (provider as any).view = { webview };
 }
 
