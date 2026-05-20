@@ -10,12 +10,12 @@ GitHub's dependency graph and security alert service should remain enabled in re
 
 ## Update lanes
 
-| Lane              | Source                                                                                      | Default cadence                       | Approval                                          |
-| ----------------- | ------------------------------------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------- |
-| Low-risk patch    | Patch updates and lockfile maintenance                                                      | Monday before 06:00 Europe/Istanbul   | Normal review                                     |
-| Medium-risk minor | Minor updates, build/test tooling, action digest updates, container base images             | Monday before 06:00 Europe/Istanbul   | Normal review, product checks required            |
-| High-risk major   | Major updates, protocol/runtime packages, VS Code API packages, security-sensitive packages | Dashboard approval before PR creation | Migration notes and compatibility review required |
-| Vulnerability fix | GitHub security alert consumed by Renovate                                                  | Immediate                             | No dashboard approval, security review required   |
+| Lane              | Source                                                                                      | Default cadence                       | Approval                                                                                                                                     |
+| ----------------- | ------------------------------------------------------------------------------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Low-risk patch    | Patch updates and lockfile maintenance                                                      | Monday before 06:00 Europe/Istanbul   | Auto-merge allowed only for configured dev-dependency patch and lockfile-maintenance PRs after required checks pass; otherwise normal review |
+| Medium-risk minor | Minor updates, build/test tooling, action digest updates, container base images             | Monday before 06:00 Europe/Istanbul   | Normal review, product checks required                                                                                                       |
+| High-risk major   | Major updates, protocol/runtime packages, VS Code API packages, security-sensitive packages | Dashboard approval before PR creation | Migration notes and compatibility review required                                                                                            |
+| Vulnerability fix | GitHub security alert consumed by Renovate                                                  | Immediate                             | No dashboard approval, security review required                                                                                              |
 
 ## Labels
 
@@ -42,7 +42,8 @@ Review the dependency dashboard once each Monday after the scheduled run finishe
 
 For each pending item:
 
-- Approve low-risk patch PRs when the grouped scope is small and CI is green.
+- Let configured low-risk dev-dependency patch and lockfile-maintenance PRs auto-merge only after required checks pass.
+- Manually review other low-risk patch PRs when the grouped scope is small and CI is green.
 - Review medium-risk PRs by product impact before merging.
 - Leave major updates unapproved until migration notes, release notes, and compatibility impact are known.
 - Split mixed runtime/build-tool updates when the PR combines unrelated risk lanes.

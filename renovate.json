@@ -26,6 +26,7 @@
       "description": "Major updates require explicit dashboard approval and migration notes.",
       "matchUpdateTypes": ["major"],
       "dependencyDashboardApproval": true,
+      "automerge": false,
       "addLabels": ["risk:high"],
       "prPriority": 5
     },
@@ -38,6 +39,7 @@
     {
       "description": "Minor updates need normal review and product-specific checks.",
       "matchUpdateTypes": ["minor"],
+      "automerge": false,
       "addLabels": ["risk:medium"],
       "prPriority": 2
     },
@@ -87,6 +89,17 @@
       "prPriority": -1
     },
     {
+      "description": "Allow low-risk Node dev-dependency patch updates to merge only after required checks pass.",
+      "matchManagers": ["npm"],
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true,
+      "addLabels": ["risk:low", "ci"],
+      "prPriority": 1
+    },
+    {
       "description": "Keep Python project updates scoped to the MCP server package.",
       "matchManagers": ["pep621"],
       "groupName": "python mcp server dependencies",
@@ -102,6 +115,7 @@
         "@types/vscode"
       ],
       "dependencyDashboardApproval": true,
+      "automerge": false,
       "addLabels": ["compatibility", "risk:high"],
       "prPriority": 6
     },
@@ -112,6 +126,7 @@
       "semanticCommitScope": "github-actions",
       "addLabels": ["ci", "risk:medium"],
       "dependencyDashboardApproval": true,
+      "automerge": false,
       "prPriority": 3
     },
     {
@@ -121,6 +136,7 @@
       "semanticCommitScope": "containers",
       "addLabels": ["product:mcp-server", "risk:medium"],
       "dependencyDashboardApproval": true,
+      "automerge": false,
       "prPriority": 3
     },
     {
@@ -145,6 +161,9 @@
   "lockFileMaintenance": {
     "enabled": true,
     "schedule": ["before 6am on monday"],
+    "automerge": true,
+    "automergeType": "pr",
+    "platformAutomerge": true,
     "addLabels": ["risk:low"]
   }
 }
