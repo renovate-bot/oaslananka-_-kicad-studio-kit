@@ -588,6 +588,13 @@ def test_release_and_publish_workflows_are_monorepo_ready() -> None:
     )
     assert "config-file: release-please-config.json" in release_please
     assert "manifest-file: .release-please-manifest.json" in release_please
+    assert "set -euo pipefail" in release_please
+    assert 'branch_output="$(gh pr list \\' in release_please
+    assert 'startswith("release-please--branches--main")' in release_please
+    assert "mapfile -t branches < <(gh pr list" not in release_please
+    assert "for branch in" in release_please
+    assert "HEAD:${branch}" in release_please
+    assert "--head release-please--branches--main" not in release_please
 
     assert "id-token: write" in publish_python
     assert "pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b" in publish_python
@@ -654,6 +661,10 @@ def test_scorecard_workflow_uses_pinned_actions_without_artifact_storage() -> No
 def test_version_synchronization_across_release_manifests() -> None:
     repo = _repo_root()
     root = Path(__file__).resolve().parents[2]
+    root_package = json.loads((repo / "package.json").read_text(encoding="utf-8"))
+    extension = json.loads(
+        (repo / "apps" / "vscode-extension" / "package.json").read_text(encoding="utf-8")
+    )
     config = (repo / "release-please-config.json").read_text(encoding="utf-8")
     release_please = json.loads(config)
     manifest = json.loads((repo / ".release-please-manifest.json").read_text(encoding="utf-8"))
@@ -665,30 +676,44 @@ def test_version_synchronization_across_release_manifests() -> None:
     server = json.loads((root / "server.json").read_text(encoding="utf-8"))
     init_py = (root / "src" / "kicad_mcp" / "__init__.py").read_text(encoding="utf-8")
 
-    version = manifest["packages/mcp-server"]
+    extension_version = manifest["apps/vscode-extension"]
+    mcp_version = manifest["packages/mcp-server"]
     assert set(manifest) == {
-        ".",
         "apps/vscode-extension",
         "packages/mcp-server",
         "packages/mcp-npm",
     }
-    assert {
-        "type": "linked-versions",
-        "groupName": "kicad-studio-kit",
-        "components": ["vscode-extension", "mcp-server", "mcp-npm"],
-    } in release_please["plugins"]
+    assert release_please["separate-pull-requests"] is True
+    linked_version_components = {
+        component
+        for plugin in release_please["plugins"]
+        if isinstance(plugin, dict)
+        and plugin.get("type") == "linked-versions"
+        and plugin.get("groupName") == "kicad-mcp-pro"
+        for component in plugin.get("components", [])
+    }
+    assert linked_version_components == {"mcp-server", "mcp-npm"}
+    assert "vscode-extension" not in linked_version_components
     extra_files = release_please["packages"]["packages/mcp-server"]["extra-files"]
     assert ("mcp.json", "$.packages[2].version") in {
         (entry["path"], entry.get("jsonpath"))
         for entry in extra_files
         if entry.get("type") == "json"
     }
-    assert wrapper["version"] == pyproject["project"]["version"] == version
-    assert mcp["version"] == server["version"] == version
-    assert all(package["version"] == version for package in mcp["packages"])
-    assert all(package["version"] == version for package in server["packages"])
-    assert f'__version__ = "{version}"' in init_py
+    assert extension["version"] == extension_version
+    assert manifest["packages/mcp-npm"] == mcp_version
+    assert wrapper["version"] == pyproject["project"]["version"] == mcp_version
+    assert mcp["version"] == server["version"] == mcp_version
+    assert all(package["version"] == mcp_version for package in mcp["packages"])
+    assert all(package["version"] == mcp_version for package in server["packages"])
+    assert f'__version__ = "{mcp_version}"' in init_py
     assert "https://oaslananka.github.io/kicad-studio-kit" in wrapper["homepage"]
+    assert "release:dry-run:kicad-studio" in root_package["scripts"]
+    assert "release:dry-run:kicad-mcp-pro" in root_package["scripts"]
+    assert "release:dry-run" in root_package["scripts"]
+    assert "release:dry-run:kicad-studio" in root_package["scripts"]["release:dry-run"]
+    assert "release:dry-run:kicad-mcp-pro" in root_package["scripts"]["release:dry-run"]
+    assert "release:dry-run" in root_package["scripts"]["check"]
 
 
 def test_docs_workflow_deploys_only_from_canonical_repo() -> None:
