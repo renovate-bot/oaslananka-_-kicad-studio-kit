@@ -5,7 +5,7 @@ import type {
   McpConnectionState,
   McpInstallStatus
 } from '../types';
-import type { McpClient } from './mcpClient';
+import type { McpConnectionAdapter } from './mcpToolAdapter';
 import { readConfiguredMcpProfile } from '../commands/mcpProfilePicker';
 
 type McpToolsNode = {
@@ -24,7 +24,9 @@ export class McpToolsProvider implements vscode.TreeDataProvider<McpToolsNode> {
   >();
   readonly onDidChangeTreeData = this.onDidChangeTreeDataEmitter.event;
 
-  constructor(private readonly mcpClient: Pick<McpClient, 'getState'>) {}
+  constructor(
+    private readonly mcpAdapter: Pick<McpConnectionAdapter, 'getState'>
+  ) {}
 
   refresh(): void {
     this.onDidChangeTreeDataEmitter.fire(undefined);
@@ -56,7 +58,7 @@ export class McpToolsProvider implements vscode.TreeDataProvider<McpToolsNode> {
       return element.children;
     }
     return buildMcpToolNodes(
-      this.mcpClient.getState(),
+      this.mcpAdapter.getState(),
       readConfiguredMcpProfile()
     );
   }
