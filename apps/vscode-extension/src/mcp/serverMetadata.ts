@@ -124,7 +124,23 @@ function readWellKnownServerInfoContract(
       cliVersion:
         typeof kicad['cliVersion'] === 'string' ? kicad['cliVersion'] : null,
       ipcAvailable: Boolean(kicad['ipcAvailable']),
-      livePcbContext: Boolean(kicad['livePcbContext'])
+      ipcVersion:
+        typeof kicad['ipcVersion'] === 'string' ? kicad['ipcVersion'] : null,
+      ipcApiVersion:
+        typeof kicad['ipcApiVersion'] === 'string'
+          ? kicad['ipcApiVersion']
+          : null,
+      ipcMajorVersion:
+        typeof kicad['ipcMajorVersion'] === 'number'
+          ? kicad['ipcMajorVersion']
+          : null,
+      ipcEndpointSource:
+        kicad['ipcEndpointSource'] === 'config' ||
+        kicad['ipcEndpointSource'] === 'environment'
+          ? kicad['ipcEndpointSource']
+          : 'default',
+      livePcbContext: Boolean(kicad['livePcbContext']),
+      liveSchematicContext: Boolean(kicad['liveSchematicContext'])
     },
     capabilities: {
       fileBackedDrc: Boolean(capabilities['fileBackedDrc']),
@@ -132,6 +148,9 @@ function readWellKnownServerInfoContract(
       fileBackedExports: Boolean(capabilities['fileBackedExports']),
       livePcbRead: Boolean(capabilities['livePcbRead']),
       livePcbWrite: Boolean(capabilities['livePcbWrite']),
+      liveSchematicRead: Boolean(capabilities['liveSchematicRead']),
+      liveSchematicWrite: Boolean(capabilities['liveSchematicWrite']),
+      liveEditingTools: parseLiveEditingTools(capabilities['liveEditingTools']),
       chatgptConnectorCompatible: Boolean(
         capabilities['chatgptConnectorCompatible']
       ),
@@ -149,6 +168,32 @@ function readWellKnownServerInfoContract(
       ? contract['diagnostics'].map((item) => String(item))
       : []
   };
+}
+
+function parseLiveEditingTools(value: unknown): McpServerInfoContract['capabilities']['liveEditingTools'] {
+  if (!isRecord(value)) {
+    return {};
+  }
+  const parsed: McpServerInfoContract['capabilities']['liveEditingTools'] = {};
+  for (const [name, rawTool] of Object.entries(value)) {
+    if (!isRecord(rawTool)) {
+      continue;
+    }
+    const backend =
+      rawTool['backend'] === 'hybrid-file-ipc'
+        ? 'hybrid-file-ipc'
+        : 'kicad-ipc';
+    parsed[name] = {
+      available: Boolean(rawTool['available']),
+      backend,
+      reason: typeof rawTool['reason'] === 'string' ? rawTool['reason'] : null,
+      minimumKiCadMajor:
+        typeof rawTool['minimumKiCadMajor'] === 'number'
+          ? rawTool['minimumKiCadMajor']
+          : 9
+    };
+  }
+  return parsed;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

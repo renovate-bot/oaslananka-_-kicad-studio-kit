@@ -51,6 +51,24 @@ def test_validation_cli_tools_are_declared_for_discovery() -> None:
     assert {"run_drc", "run_erc", "validate_design"}.issubset(declared)
 
 
+def test_oaslana_119_live_editing_aliases_are_declared_for_discovery() -> None:
+    declared = {
+        tool_name for category in TOOL_CATEGORIES.values() for tool_name in category["tools"]
+    }
+
+    assert {
+        "pcb_place_component",
+        "pcb_route_trace",
+        "pcb_add_zone",
+        "pcb_set_design_rules",
+        "pcb_move_component",
+        "pcb_delete_object",
+        "sch_add_component",
+        "sch_add_wire",
+        "sch_modify_property",
+    }.issubset(declared)
+
+
 def test_create_server_sync_wrapper_materializes_tool_list() -> None:
     server = create_server("full")
     tools = server.list_tools()
@@ -109,7 +127,13 @@ async def test_full_profile_keeps_low_level_exports_available() -> None:
 
 
 @pytest.mark.anyio
-async def test_tool_categories_have_no_phantom_or_undeclared_tools() -> None:
+async def test_tool_categories_have_no_phantom_or_undeclared_tools(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "kicad_mcp.server.get_ipc_capability_state",
+        lambda: _AvailableIpcState(),
+    )
     server = build_server("full")
     registered = {tool.name for tool in await server.list_tools()}
     declared: set[str] = set()
@@ -117,3 +141,15 @@ async def test_tool_categories_have_no_phantom_or_undeclared_tools() -> None:
         declared.update(category["tools"])
 
     assert registered == (declared - EXPERIMENTAL_TOOL_NAMES)
+
+
+class _AvailableIpcState:
+    reachable = True
+    live_pcb_read = True
+    live_pcb_write = True
+    live_schematic_read = True
+    live_schematic_write = True
+    operations: dict[str, object] = {}
+
+    def tool_available(self, _tool_name: str) -> bool:
+        return True

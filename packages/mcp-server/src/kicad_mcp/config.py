@@ -148,6 +148,7 @@ class KiCadMCPConfig(BaseSettings):
 
         aliases = {
             "kicad_token": ("KICAD_API_TOKEN", "KICAD_MCP_KICAD_TOKEN"),
+            "kicad_socket_path": ("KICAD_API_SOCKET", "KICAD_MCP_KICAD_SOCKET_PATH"),
             "kicad_cli": ("KICAD_CLI_PATH", "KICAD_MCP_KICAD_CLI"),
             "workspace_root": ("KICAD_MCP_WORKSPACE_ROOT",),
             "ipc_retries": ("KICAD_MCP_RETRIES",),

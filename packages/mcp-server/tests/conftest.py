@@ -89,6 +89,7 @@ def reset_globals(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     monkeypatch.delenv("KICAD_MCP_SYMBOL_LIBRARY_DIR", raising=False)
     monkeypatch.delenv("KICAD_MCP_FOOTPRINT_LIBRARY_DIR", raising=False)
     monkeypatch.delenv("KICAD_MCP_KICAD_CLI", raising=False)
+    monkeypatch.delenv("KICAD_API_SOCKET", raising=False)
     monkeypatch.delenv("KICAD_CLI_PATH", raising=False)
     monkeypatch.delenv("KICAD_API_TOKEN", raising=False)
     monkeypatch.delenv("KICAD_MCP_TIMEOUT_MS", raising=False)

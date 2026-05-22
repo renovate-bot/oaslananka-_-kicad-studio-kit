@@ -267,7 +267,10 @@ function kicadRuntimeNode(
       `CLI: ${cliStatus}`,
       `Path: ${serverInfo.kicad.cliPath}`,
       `IPC: ${serverInfo.kicad.ipcAvailable ? 'available' : 'unavailable'}`,
-      `Live PCB: ${serverInfo.kicad.livePcbContext ? 'available' : 'unavailable'}`
+      `IPC version: ${serverInfo.kicad.ipcVersion ?? 'unknown'}`,
+      `IPC endpoint: ${serverInfo.kicad.ipcEndpointSource}`,
+      `Live PCB: ${serverInfo.kicad.livePcbContext ? 'available' : 'unavailable'}`,
+      `Live schematic: ${serverInfo.kicad.liveSchematicContext ? 'available' : 'unavailable'}`
     ].join('\n'),
     icon: serverInfo.kicad.livePcbContext ? 'circuit-board' : 'warning'
   };
@@ -285,6 +288,14 @@ function operationModesNode(
     ),
     capabilityFlag('Live PCB read', serverInfo.capabilities.livePcbRead),
     capabilityFlag('Live PCB write', serverInfo.capabilities.livePcbWrite),
+    capabilityFlag(
+      'Live schematic read',
+      serverInfo.capabilities.liveSchematicRead
+    ),
+    capabilityFlag(
+      'Live schematic write',
+      serverInfo.capabilities.liveSchematicWrite
+    ),
     capabilityFlag(
       'ChatGPT connector',
       serverInfo.capabilities.chatgptConnectorCompatible

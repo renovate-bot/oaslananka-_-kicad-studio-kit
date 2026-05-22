@@ -346,7 +346,12 @@ export interface McpServerInfoContract {
     cliPath: string;
     cliVersion: string | null;
     ipcAvailable: boolean;
+    ipcVersion: string | null;
+    ipcApiVersion: string | null;
+    ipcMajorVersion: number | null;
+    ipcEndpointSource: 'config' | 'environment' | 'default';
     livePcbContext: boolean;
+    liveSchematicContext: boolean;
   };
   capabilities: {
     fileBackedDrc: boolean;
@@ -354,6 +359,17 @@ export interface McpServerInfoContract {
     fileBackedExports: boolean;
     livePcbRead: boolean;
     livePcbWrite: boolean;
+    liveSchematicRead: boolean;
+    liveSchematicWrite: boolean;
+    liveEditingTools: Record<
+      string,
+      {
+        available: boolean;
+        backend: 'kicad-ipc' | 'hybrid-file-ipc';
+        reason: string | null;
+        minimumKiCadMajor: number;
+      }
+    >;
     chatgptConnectorCompatible: boolean;
     cliExports: {
       ipc2581: boolean;

@@ -9,6 +9,8 @@ from kicad_mcp.config import KiCadMCPConfig
 
 def test_config_aliases_and_secret_masking(fake_cli: Path, monkeypatch) -> None:
     workspace = fake_cli.parent
+    socket_path = fake_cli.parent / "api.sock"
+    monkeypatch.setenv("KICAD_API_SOCKET", str(socket_path))
     monkeypatch.setenv("KICAD_API_TOKEN", "secret-token")
     monkeypatch.setenv("KICAD_CLI_PATH", str(fake_cli))
     monkeypatch.setenv("KICAD_MCP_TIMEOUT_MS", "15000")
@@ -21,6 +23,7 @@ def test_config_aliases_and_secret_masking(fake_cli: Path, monkeypatch) -> None:
     safe = cfg.safe_diagnostics()
 
     assert cfg.kicad_cli == fake_cli
+    assert cfg.kicad_socket_path == socket_path
     assert cfg.kicad_token == "secret-token"  # noqa: S105 - test fixture
     assert cfg.timeout_ms == 15000
     assert cfg.ipc_retries == 4

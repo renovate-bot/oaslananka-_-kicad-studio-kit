@@ -39,15 +39,18 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from typer.models import OptionInfo
 
 from . import __version__
+from .capabilities import AccessTier, RuntimeRequirement
 from .capabilities import all_records as all_capability_records
+from .capabilities import get as get_capability_record
 from .compatibility import MCP_PROTOCOL_VERSION
 from .config import LOOPBACK_HOSTS, KiCadMCPConfig, get_config, reset_config
 from .connection import KiCadConnectionError, get_board
 from .diagnostics import DiagnosticReport, build_doctor_report, build_health_report
 from .discovery import ensure_studio_project_watcher, find_kicad_version
+from .ipc.capabilities import KiCadIpcCapabilityState, get_ipc_capability_state
 from .tools import router
 from .tools.fixers import validate_callable_imports
-from .tools.metadata import infer_tool_annotations
+from .tools.metadata import get_tool_metadata, infer_tool_annotations
 from .tools.router import EXPERIMENTAL_TOOL_NAMES, available_profiles, categories_for_profile
 from .utils import telemetry as otel
 from .utils.logging import setup_logging
@@ -449,11 +452,40 @@ class _StaticTokenVerifier:
         self._expected_token = token
 
 
+def _tool_requires_ipc(tool_name: str) -> bool:
+    record = get_capability_record(tool_name)
+    if record is not None and record.runtime is RuntimeRequirement.KICAD_IPC:
+        return True
+    metadata = get_tool_metadata(tool_name)
+    return bool(metadata and metadata.requires_kicad_running)
+
+
+def _ipc_runtime_allows_tool(tool_name: str, state: KiCadIpcCapabilityState) -> bool:
+    if not _tool_requires_ipc(tool_name):
+        return True
+    if tool_name in state.operations:
+        return state.tool_available(tool_name)
+
+    record = get_capability_record(tool_name)
+    tier = record.tier if record is not None else AccessTier.WRITE
+    if tool_name.startswith("pcb_"):
+        return state.live_pcb_read if tier is AccessTier.READ else state.live_pcb_write
+    if tool_name.startswith("sch_"):
+        return state.live_schematic_read if tier is AccessTier.READ else state.live_schematic_write
+    return state.reachable
+
+
+def _filter_ipc_runtime_tools(tools: list[mcp_types.Tool]) -> list[mcp_types.Tool]:
+    state = get_ipc_capability_state()
+    return [tool for tool in tools if _ipc_runtime_allows_tool(tool.name, state)]
+
+
 class KiCadFastMCP(FastMCP):
     """FastMCP extension that auto-infers tool annotations and adds CORS support."""
 
     allow_experimental_tools: bool = False
     allowed_tool_names: set[str] | None = None
+    filter_runtime_tools: bool = True
     _lazy_registration: Callable[[], None] | None = None
     _lazy_registration_complete: bool = False
     _lazy_registration_error: BaseException | None = None
@@ -548,6 +580,8 @@ class KiCadFastMCP(FastMCP):
         allowed_tool_names = getattr(self, "allowed_tool_names", None)
         if allowed_tool_names is not None:
             tools = [tool for tool in tools if tool.name in allowed_tool_names]
+        if getattr(self, "filter_runtime_tools", True):
+            tools = _filter_ipc_runtime_tools(tools)
         if (
             getattr(self, "allow_experimental_tools", False)
             or get_config().enable_experimental_tools
@@ -1589,9 +1623,10 @@ def list_tools_command(
     sync_list = getattr(server, "list_tools_sync", None)
     if not callable(sync_list):
         raise typer.Exit(2)
-    tools = sorted(
-        cast(Callable[[], list[mcp_types.Tool]], sync_list)(), key=lambda tool: tool.name
-    )
+    with contextlib.redirect_stdout(io.StringIO()):
+        tools = sorted(
+            cast(Callable[[], list[mcp_types.Tool]], sync_list)(), key=lambda tool: tool.name
+        )
     payload = [_tool_payload(tool) for tool in tools]
     if json_output:
         typer.echo(json.dumps(payload, indent=2))

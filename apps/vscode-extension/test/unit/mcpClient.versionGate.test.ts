@@ -44,7 +44,7 @@ function wellKnownServerInfoResult() {
       version: '1.0.0'
     },
     serverInfoContract: {
-      schemaVersion: '1.0.0',
+      schemaVersion: '1.1.0',
       server: 'kicad-mcp-pro',
       version: '1.0.0',
       mcpProtocolVersion: '2025-11-25',
@@ -73,7 +73,12 @@ function wellKnownServerInfoResult() {
         cliPath: '/usr/bin/kicad-cli',
         cliVersion: 'KiCad 10.0.3',
         ipcAvailable: false,
-        livePcbContext: false
+        ipcVersion: null,
+        ipcApiVersion: null,
+        ipcMajorVersion: null,
+        ipcEndpointSource: 'default',
+        livePcbContext: false,
+        liveSchematicContext: false
       },
       capabilities: {
         fileBackedDrc: true,
@@ -81,6 +86,64 @@ function wellKnownServerInfoResult() {
         fileBackedExports: true,
         livePcbRead: false,
         livePcbWrite: false,
+        liveSchematicRead: false,
+        liveSchematicWrite: false,
+        liveEditingTools: {
+          pcb_place_component: {
+            available: false,
+            backend: 'kicad-ipc',
+            reason: 'KiCad IPC is unavailable.',
+            minimumKiCadMajor: 9
+          },
+          pcb_route_trace: {
+            available: false,
+            backend: 'kicad-ipc',
+            reason: 'KiCad IPC is unavailable.',
+            minimumKiCadMajor: 9
+          },
+          pcb_add_zone: {
+            available: false,
+            backend: 'kicad-ipc',
+            reason: 'KiCad IPC is unavailable.',
+            minimumKiCadMajor: 9
+          },
+          pcb_set_design_rules: {
+            available: false,
+            backend: 'hybrid-file-ipc',
+            reason: 'KiCad IPC is unavailable.',
+            minimumKiCadMajor: 9
+          },
+          pcb_move_component: {
+            available: false,
+            backend: 'kicad-ipc',
+            reason: 'KiCad IPC is unavailable.',
+            minimumKiCadMajor: 9
+          },
+          pcb_delete_object: {
+            available: false,
+            backend: 'kicad-ipc',
+            reason: 'KiCad IPC is unavailable.',
+            minimumKiCadMajor: 9
+          },
+          sch_add_component: {
+            available: false,
+            backend: 'hybrid-file-ipc',
+            reason: 'KiCad IPC is unavailable.',
+            minimumKiCadMajor: 10
+          },
+          sch_add_wire: {
+            available: false,
+            backend: 'hybrid-file-ipc',
+            reason: 'KiCad IPC is unavailable.',
+            minimumKiCadMajor: 10
+          },
+          sch_modify_property: {
+            available: false,
+            backend: 'hybrid-file-ipc',
+            reason: 'KiCad IPC is unavailable.',
+            minimumKiCadMajor: 10
+          }
+        },
         chatgptConnectorCompatible: false,
         cliExports: {
           ipc2581: false,
@@ -226,7 +289,7 @@ describe('McpClient version gate', () => {
     const state = await createClient().testConnection();
 
     expect(state.server?.compat).toBe('warn');
-    expect(state.server?.capabilities.serverInfo?.schemaVersion).toBe('1.0.0');
+    expect(state.server?.capabilities.serverInfo?.schemaVersion).toBe('1.1.0');
   });
 
   it('blocks tool calls after an incompatible initialize response', async () => {

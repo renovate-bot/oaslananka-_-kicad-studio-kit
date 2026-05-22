@@ -1,6 +1,25 @@
 from __future__ import annotations
 
-from kicad_mcp.capabilities import AccessTier, all_records, get, is_allowed, tools_for_profile
+from kicad_mcp.capabilities import (
+    AccessTier,
+    RuntimeRequirement,
+    all_records,
+    get,
+    is_allowed,
+    tools_for_profile,
+)
+
+REQUIRED_OASLANA_119_TOOLS = {
+    "pcb_place_component",
+    "pcb_route_trace",
+    "pcb_add_zone",
+    "pcb_set_design_rules",
+    "pcb_move_component",
+    "pcb_delete_object",
+    "sch_add_component",
+    "sch_add_wire",
+    "sch_modify_property",
+}
 
 
 def test_is_allowed_for_known_tools_and_profiles() -> None:
@@ -40,6 +59,16 @@ def test_registered_tools_have_valid_verification_levels() -> None:
     assert all_records()
     for record in all_records().values():
         assert record.verification_level in valid_levels
+
+
+def test_oaslana_119_live_editing_tools_require_kicad_ipc() -> None:
+    records = all_records()
+
+    assert REQUIRED_OASLANA_119_TOOLS.issubset(records)
+    for tool_name in REQUIRED_OASLANA_119_TOOLS:
+        record = records[tool_name]
+        assert record.runtime is RuntimeRequirement.KICAD_IPC
+        assert record.tier is AccessTier.WRITE
 
 
 def test_profile_results_are_copies() -> None:
