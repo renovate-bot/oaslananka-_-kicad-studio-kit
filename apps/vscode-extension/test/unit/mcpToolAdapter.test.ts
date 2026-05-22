@@ -164,7 +164,72 @@ describe('McpToolAdapter', () => {
       output: 'sim.cir'
     });
     expect(client.exportManufacturingPackage).toHaveBeenCalledWith(
-      'Assembly-A'
+      'Assembly-A',
+      {}
+    );
+  });
+
+  it('adds active project context to every MCP tool call boundary', async () => {
+    const project = {
+      id: 'file:///workspace/alpha/alpha.kicad_pro',
+      name: 'alpha',
+      rootPath: '/workspace/alpha',
+      projectFile: '/workspace/alpha/alpha.kicad_pro',
+      workspaceFolder: '/workspace'
+    };
+    const client = {
+      callTool: jest.fn().mockResolvedValue({ ok: true }),
+      previewToolCall: jest.fn().mockResolvedValue('preview'),
+      runProjectQualityGate: jest.fn().mockResolvedValue([]),
+      exportManufacturingPackage: jest.fn().mockResolvedValue({ ok: true })
+    };
+    const adapter = new McpToolAdapter(client as never, () => project);
+
+    await adapter.previewToolCall({
+      name: 'inspect',
+      arguments: { mode: 'readonly' }
+    });
+    await adapter.executeToolCall({
+      name: 'route',
+      arguments: { net: 'GND' }
+    });
+    await adapter.runDrc({ save_report: true });
+    await adapter.runProjectQualityGate();
+    await adapter.exportManufacturingPackage('Assembly-A');
+
+    expect(client.previewToolCall).toHaveBeenCalledWith(
+      expect.objectContaining({
+        arguments: expect.objectContaining({
+          mode: 'readonly',
+          projectId: project.id,
+          projectRoot: project.rootPath,
+          projectFile: project.projectFile,
+          project: expect.objectContaining({ name: 'alpha' })
+        })
+      })
+    );
+    expect(client.callTool).toHaveBeenCalledWith(
+      'route',
+      expect.objectContaining({
+        net: 'GND',
+        projectId: project.id,
+        projectRoot: project.rootPath
+      })
+    );
+    expect(client.callTool).toHaveBeenCalledWith(
+      'run_drc',
+      expect.objectContaining({
+        save_report: true,
+        projectId: project.id,
+        projectRoot: project.rootPath
+      })
+    );
+    expect(client.runProjectQualityGate).toHaveBeenCalledWith(
+      expect.objectContaining({ projectId: project.id })
+    );
+    expect(client.exportManufacturingPackage).toHaveBeenCalledWith(
+      'Assembly-A',
+      expect.objectContaining({ projectId: project.id })
     );
   });
 

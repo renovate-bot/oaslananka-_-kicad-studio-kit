@@ -73,7 +73,9 @@ describe('extension state stores', () => {
     });
     expect(store.getDiagnosticBundleSnapshot()).toEqual({
       drc: expect.objectContaining({ errors: 0, source: 'drc' }),
-      erc: undefined
+      erc: undefined,
+      activeProjectId: undefined,
+      projects: []
     });
   });
 
@@ -90,6 +92,8 @@ describe('extension state stores', () => {
 
     expect(store.getSnapshot()).toEqual({
       activeResource: activeResource.toString(),
+      activeProject: undefined,
+      projects: [],
       hasProject: true,
       hasVariants: false,
       workspaceTrusted: true
@@ -119,6 +123,7 @@ describe('extension state stores', () => {
       viewers: [
         expect.objectContaining({
           uri: boardUri.toString(),
+          project: undefined,
           error: undefined,
           status: 'loading'
         })

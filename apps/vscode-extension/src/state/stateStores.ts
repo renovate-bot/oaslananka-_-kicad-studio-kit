@@ -4,13 +4,20 @@ import type {
   McpCapabilityCard,
   McpConnectionState,
   McpInstallStatus,
+  ProjectContext,
   McpServerCard,
   ViewerState
 } from '../types';
 import { redactSensitiveText } from '../utils/secrets';
+import {
+  cloneProjectContext,
+  findProjectForResource
+} from '../workspace/projectContext';
 
 export interface ProjectStateSnapshot {
   activeResource: string | undefined;
+  activeProject: ProjectContext | undefined;
+  projects: ProjectContext[];
   hasProject: boolean;
   hasVariants: boolean;
   workspaceTrusted: boolean;
@@ -18,6 +25,8 @@ export interface ProjectStateSnapshot {
 
 interface ProjectState extends Omit<ProjectStateSnapshot, 'activeResource'> {
   activeResource: vscode.Uri | undefined;
+  activeProject: ProjectContext | undefined;
+  projects: ProjectContext[];
 }
 
 export class ProjectStateStore implements vscode.Disposable {
@@ -26,6 +35,8 @@ export class ProjectStateStore implements vscode.Disposable {
   readonly onDidChange = this.onDidChangeEmitter.event;
   private state: ProjectState = {
     activeResource: undefined,
+    activeProject: undefined,
+    projects: [],
     hasProject: false,
     hasVariants: false,
     workspaceTrusted: false
@@ -41,10 +52,37 @@ export class ProjectStateStore implements vscode.Disposable {
   getSnapshot(): ProjectStateSnapshot {
     return {
       activeResource: this.state.activeResource?.toString(),
+      activeProject: this.state.activeProject
+        ? cloneProjectContext(this.state.activeProject)
+        : undefined,
+      projects: this.state.projects.map(cloneProjectContext),
       hasProject: this.state.hasProject,
       hasVariants: this.state.hasVariants,
       workspaceTrusted: this.state.workspaceTrusted
     };
+  }
+
+  getProjects(): ProjectContext[] {
+    return this.state.projects.map(cloneProjectContext);
+  }
+
+  getActiveProject(): ProjectContext | undefined {
+    return this.state.activeProject
+      ? cloneProjectContext(this.state.activeProject)
+      : undefined;
+  }
+
+  findProjectById(id: string | undefined): ProjectContext | undefined {
+    const project = id
+      ? this.state.projects.find((entry) => entry.id === id)
+      : undefined;
+    return project ? cloneProjectContext(project) : undefined;
+  }
+
+  findProjectForResource(
+    resource: vscode.Uri | string | undefined
+  ): ProjectContext | undefined {
+    return findProjectForResource(this.state.projects, resource);
   }
 
   getDiagnosticBundleSnapshot(): ProjectStateSnapshot {
@@ -59,12 +97,24 @@ export class ProjectStateStore implements vscode.Disposable {
 export interface DiagnosticStateSnapshot {
   drc: DiagnosticSummary | undefined;
   erc: DiagnosticSummary | undefined;
+  activeProjectId: string | undefined;
+  projects: Array<{
+    projectId: string;
+    drc: DiagnosticSummary | undefined;
+    erc: DiagnosticSummary | undefined;
+  }>;
 }
 
 interface LatestDrcRun {
   file: string;
   diagnostics: vscode.Diagnostic[];
   summary: DiagnosticSummary;
+}
+
+interface ProjectDiagnostics {
+  drc: DiagnosticSummary | undefined;
+  erc: DiagnosticSummary | undefined;
+  latestDrcRun: LatestDrcRun | undefined;
 }
 
 export class DiagnosticStateStore implements vscode.Disposable {
@@ -74,16 +124,35 @@ export class DiagnosticStateStore implements vscode.Disposable {
   private drc: DiagnosticSummary | undefined;
   private erc: DiagnosticSummary | undefined;
   private latestDrcRun: LatestDrcRun | undefined;
+  private activeProjectId: string | undefined;
+  private readonly projectDiagnostics = new Map<string, ProjectDiagnostics>();
 
   constructor(private readonly diagnostics: vscode.DiagnosticCollection) {}
+
+  setActiveProject(projectId: string | undefined): DiagnosticStateSnapshot {
+    this.activeProjectId = projectId;
+    const snapshot = this.getSnapshot();
+    this.onDidChangeEmitter.fire(snapshot);
+    return snapshot;
+  }
 
   applyValidationResult(
     uri: vscode.Uri,
     diagnostics: readonly vscode.Diagnostic[],
-    summary: DiagnosticSummary
+    summary: DiagnosticSummary,
+    options: { project?: ProjectContext | undefined; projectId?: string } = {}
   ): DiagnosticStateSnapshot {
     this.diagnostics.set(uri, diagnostics);
     const nextSummary = cloneSummary(summary);
+    const projectId = options.project?.id ?? options.projectId;
+    const projectState = projectId
+      ? (this.projectDiagnostics.get(projectId) ?? {
+          drc: undefined,
+          erc: undefined,
+          latestDrcRun: undefined
+        })
+      : undefined;
+
     if (summary.source === 'drc') {
       this.drc = nextSummary;
       this.latestDrcRun = {
@@ -91,29 +160,76 @@ export class DiagnosticStateStore implements vscode.Disposable {
         diagnostics: [...diagnostics],
         summary: nextSummary
       };
+      if (projectState) {
+        projectState.drc = nextSummary;
+        projectState.latestDrcRun = {
+          file: summary.file,
+          diagnostics: [...diagnostics],
+          summary: nextSummary
+        };
+      }
     }
     if (summary.source === 'erc') {
       this.erc = nextSummary;
+      if (projectState) {
+        projectState.erc = nextSummary;
+      }
+    }
+    if (projectId && projectState) {
+      this.projectDiagnostics.set(projectId, projectState);
     }
     const snapshot = this.getSnapshot();
     this.onDidChangeEmitter.fire(snapshot);
     return snapshot;
   }
 
-  getLatestDrcRun(): LatestDrcRun | undefined {
-    return this.latestDrcRun
+  getLatestDrcRun(projectId?: string | undefined): LatestDrcRun | undefined {
+    const latest = projectId
+      ? this.projectDiagnostics.get(projectId)?.latestDrcRun
+      : this.activeProjectId
+        ? (this.projectDiagnostics.get(this.activeProjectId)?.latestDrcRun ??
+          this.latestDrcRun)
+        : this.latestDrcRun;
+    return latest
       ? {
-          file: this.latestDrcRun.file,
-          diagnostics: [...this.latestDrcRun.diagnostics],
-          summary: cloneSummary(this.latestDrcRun.summary)
+          file: latest.file,
+          diagnostics: [...latest.diagnostics],
+          summary: cloneSummary(latest.summary)
         }
       : undefined;
   }
 
-  getSnapshot(): DiagnosticStateSnapshot {
+  getSnapshot(
+    options: { projectId?: string | undefined } = {}
+  ): DiagnosticStateSnapshot {
+    const projectId = options.projectId ?? this.activeProjectId;
+    const projectState = projectId
+      ? this.projectDiagnostics.get(projectId)
+      : undefined;
+    const useProjectScope = Boolean(projectId);
     return {
-      drc: this.drc ? cloneSummary(this.drc) : undefined,
-      erc: this.erc ? cloneSummary(this.erc) : undefined
+      drc: projectState?.drc
+        ? cloneSummary(projectState.drc)
+        : useProjectScope
+          ? undefined
+          : this.drc
+          ? cloneSummary(this.drc)
+          : undefined,
+      erc: projectState?.erc
+        ? cloneSummary(projectState.erc)
+        : useProjectScope
+          ? undefined
+          : this.erc
+          ? cloneSummary(this.erc)
+          : undefined,
+      activeProjectId: this.activeProjectId,
+      projects: [...this.projectDiagnostics.entries()].map(
+        ([entryProjectId, state]) => ({
+          projectId: entryProjectId,
+          drc: state.drc ? cloneSummary(state.drc) : undefined,
+          erc: state.erc ? cloneSummary(state.erc) : undefined
+        })
+      )
     };
   }
 
@@ -130,6 +246,7 @@ type ViewerSurfaceStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 interface ViewerSurfaceState {
   uri: vscode.Uri;
+  project: ProjectContext | undefined;
   state: ViewerState | undefined;
   error: string | undefined;
   status: ViewerSurfaceStatus;
@@ -138,6 +255,7 @@ interface ViewerSurfaceState {
 export interface ViewerStateSnapshot {
   viewers: Array<{
     uri: string;
+    project: ProjectContext | undefined;
     state: ViewerState | undefined;
     error: string | undefined;
     status: ViewerSurfaceStatus;
@@ -150,22 +268,36 @@ export class ViewerStateStore implements vscode.Disposable {
   readonly onDidChange = this.onDidChangeEmitter.event;
   private readonly viewers = new Map<string, ViewerSurfaceState>();
 
-  beginReload(uri: vscode.Uri): ViewerStateSnapshot {
+  beginReload(
+    uri: vscode.Uri,
+    options: { project?: ProjectContext | undefined } = {}
+  ): ViewerStateSnapshot {
     return this.updateSurface(uri, {
+      project: options.project,
       error: undefined,
       status: 'loading'
     });
   }
 
-  recordError(uri: vscode.Uri, error: unknown): ViewerStateSnapshot {
+  recordError(
+    uri: vscode.Uri,
+    error: unknown,
+    options: { project?: ProjectContext | undefined } = {}
+  ): ViewerStateSnapshot {
     return this.updateSurface(uri, {
+      project: options.project,
       error: error instanceof Error ? error.message : String(error),
       status: 'error'
     });
   }
 
-  updateState(uri: vscode.Uri, state: ViewerState): ViewerStateSnapshot {
+  updateState(
+    uri: vscode.Uri,
+    state: ViewerState,
+    options: { project?: ProjectContext | undefined } = {}
+  ): ViewerStateSnapshot {
     return this.updateSurface(uri, {
+      project: options.project,
       error: undefined,
       state: cloneViewerState(state),
       status: 'ready'
@@ -181,6 +313,7 @@ export class ViewerStateStore implements vscode.Disposable {
     return {
       viewers: [...this.viewers.values()].map((viewer) => ({
         uri: viewer.uri.toString(),
+        project: viewer.project ? cloneProjectContext(viewer.project) : undefined,
         state: viewer.state ? cloneViewerState(viewer.state) : undefined,
         error: viewer.error,
         status: viewer.status
@@ -207,12 +340,14 @@ export class ViewerStateStore implements vscode.Disposable {
     update: Partial<Omit<ViewerSurfaceState, 'uri'>>
   ): ViewerStateSnapshot {
     const previous = this.viewers.get(uri.toString());
+    const { project, ...rest } = update;
     this.viewers.set(uri.toString(), {
       uri,
+      project: project ?? previous?.project,
       state: previous?.state,
       error: previous?.error,
       status: previous?.status ?? 'idle',
-      ...update
+      ...rest
     });
     const snapshot = this.getSnapshot();
     this.onDidChangeEmitter.fire(snapshot);

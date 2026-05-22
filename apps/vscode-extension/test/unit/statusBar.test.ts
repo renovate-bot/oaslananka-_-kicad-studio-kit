@@ -5,16 +5,17 @@
 import { KiCadStatusBar } from '../../src/statusbar/kicadStatusBar';
 import { window } from './vscodeMock';
 
-// Item indices in allItems(): kicad=0, drc=1, erc=2, sep1=3, ai=4, mcp=5, sep2=6, variant=7
+// Item indices in allItems(): project=0, kicad=1, drc=2, erc=3, sep1=4, ai=5, mcp=6, sep2=7, variant=8
 const IDX = {
-  kicad: 0,
-  drc: 1,
-  erc: 2,
-  sep1: 3,
-  ai: 4,
-  mcp: 5,
-  sep2: 6,
-  variant: 7
+  project: 0,
+  kicad: 1,
+  drc: 2,
+  erc: 3,
+  sep1: 4,
+  ai: 5,
+  mcp: 6,
+  sep2: 7,
+  variant: 8
 };
 
 function getItems() {
@@ -36,10 +37,10 @@ describe('KiCadStatusBar', () => {
     jest.clearAllMocks();
   });
 
-  it('creates eight status bar items', () => {
+  it('creates nine status bar items', () => {
     const bar = new KiCadStatusBar({} as never);
     expect((window.createStatusBarItem as jest.Mock).mock.calls).toHaveLength(
-      8
+      9
     );
     bar.dispose();
   });
@@ -47,10 +48,20 @@ describe('KiCadStatusBar', () => {
   it('shows warning on kicad item and hides inactive drc/erc by default', () => {
     const bar = new KiCadStatusBar({} as never);
     const items = getItems();
+    expect(items[IDX.project]!.hide).toHaveBeenCalled();
     expect(items[IDX.kicad]!.text).toContain('warning');
     expect(items[IDX.drc]!.hide).toHaveBeenCalled();
     expect(items[IDX.erc]!.hide).toHaveBeenCalled();
     expect(items[IDX.sep1]!.hide).toHaveBeenCalled();
+    bar.dispose();
+  });
+
+  it('renders active project as a switchable status bar item', () => {
+    const bar = new KiCadStatusBar({} as never);
+    bar.update({ activeProjectName: 'alpha' });
+    const items = getItems();
+    expect(items[IDX.project]!.text).toContain('alpha');
+    expect(items[IDX.project]!.tooltip).toContain('Active KiCad project');
     bar.dispose();
   });
 

@@ -16,6 +16,7 @@ import { resolveKiCadExecutable, launchDetached } from './kicadLauncher';
 import { buildStatusMenuItems } from './viewerStatusMenu';
 import type { CommandServices } from './types';
 import { findFirstWorkspaceFile, getWorkspaceRoot } from '../utils/pathUtils';
+import type { ProjectContext, ProjectTreeNode } from '../types';
 
 /**
  * Register viewer, tree, library, variant, and general navigation commands.
@@ -44,6 +45,21 @@ export function registerViewerCommands(
         );
       }
     }),
+
+    vscode.commands.registerCommand(
+      COMMANDS.selectActiveProject,
+      async (
+        target?: vscode.Uri | ProjectContext | ProjectTreeNode | string
+      ) => {
+        const directProject = resolveCommandProject(services, target);
+        const project =
+          directProject ?? (await pickProjectFromQuickPick(services));
+        if (!project) {
+          return;
+        }
+        await services.selectActiveProject(project);
+      }
+    ),
 
     vscode.commands.registerCommand(
       COMMANDS.openSchematic,
@@ -183,6 +199,54 @@ export function registerViewerCommands(
       'Import .kicad_dru template'
     )
   ];
+}
+
+function resolveCommandProject(
+  services: CommandServices,
+  target: vscode.Uri | ProjectContext | ProjectTreeNode | string | undefined
+): ProjectContext | undefined {
+  if (!target) {
+    return undefined;
+  }
+  if (typeof target === 'string') {
+    return services.projectState.findProjectById(target);
+  }
+  if ('projectFile' in target) {
+    return target;
+  }
+  if ('project' in target && target.project) {
+    return target.project;
+  }
+  if ('fsPath' in target) {
+    return services.projectState.findProjectForResource(target);
+  }
+  return undefined;
+}
+
+async function pickProjectFromQuickPick(
+  services: CommandServices
+): Promise<ProjectContext | undefined> {
+  const projects = services.projectState.getProjects();
+  if (!projects.length) {
+    void vscode.window.showWarningMessage(
+      'No KiCad project file was found in this workspace.'
+    );
+    return undefined;
+  }
+  if (projects.length === 1) {
+    return projects[0];
+  }
+
+  const picked = await vscode.window.showQuickPick(
+    projects.map((project) => ({
+      label: project.name,
+      description: path.relative(project.workspaceFolder, project.rootPath),
+      detail: project.projectFile,
+      project
+    })),
+    { title: 'Select Active KiCad Project' }
+  );
+  return picked?.project;
 }
 
 type DrcTemplate = 'default' | 'fabrication';

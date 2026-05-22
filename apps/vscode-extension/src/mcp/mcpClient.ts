@@ -305,7 +305,9 @@ export class McpClient {
     }
   }
 
-  async fetchFixQueue(): Promise<FixItem[]> {
+  async fetchFixQueue(
+    args: Record<string, unknown> = {}
+  ): Promise<FixItem[]> {
     const resource = await this.readResource('kicad://project/fix_queue');
     const items =
       (Array.isArray(resource?.['items']) ? resource['items'] : undefined) ??
@@ -315,7 +317,7 @@ export class McpClient {
       return items.map((item, index) => normalizeFixItem(item, index));
     }
 
-    const toolResult = await this.callTool('project_get_fix_queue', {});
+    const toolResult = await this.callTool('project_get_fix_queue', args);
     const fixItems =
       (Array.isArray(toolResult?.['items'])
         ? toolResult['items']
@@ -327,33 +329,43 @@ export class McpClient {
     return fixItems.map((item, index) => normalizeFixItem(item, index));
   }
 
-  async runProjectQualityGate(): Promise<QualityGateResult[]> {
-    const result = await this.callTool('project_quality_gate_report', {});
+  async runProjectQualityGate(
+    args: Record<string, unknown> = {}
+  ): Promise<QualityGateResult[]> {
+    const result = await this.callTool('project_quality_gate_report', args);
     return normalizeProjectGateResults(result);
   }
 
-  async runPlacementQualityGate(): Promise<QualityGateResult> {
+  async runPlacementQualityGate(
+    args: Record<string, unknown> = {}
+  ): Promise<QualityGateResult> {
     const result =
-      (await this.callTool('pcb_placement_quality_report', {})) ??
-      (await this.callTool('pcb_placement_quality_gate', {})) ??
+      (await this.callTool('pcb_placement_quality_report', args)) ??
+      (await this.callTool('pcb_placement_quality_gate', args)) ??
       {};
     return normalizeSingleGate('placement', 'Placement', result);
   }
 
-  async runTransferQualityGate(): Promise<QualityGateResult> {
-    const result = await this.callTool('pcb_transfer_quality_gate', {});
+  async runTransferQualityGate(
+    args: Record<string, unknown> = {}
+  ): Promise<QualityGateResult> {
+    const result = await this.callTool('pcb_transfer_quality_gate', args);
     return normalizeSingleGate('transfer', 'PCB Transfer', result ?? {});
   }
 
-  async runManufacturingQualityGate(): Promise<QualityGateResult> {
-    const result = await this.callTool('manufacturing_quality_gate', {});
+  async runManufacturingQualityGate(
+    args: Record<string, unknown> = {}
+  ): Promise<QualityGateResult> {
+    const result = await this.callTool('manufacturing_quality_gate', args);
     return normalizeSingleGate('manufacturing', 'Manufacturing', result ?? {});
   }
 
   async exportManufacturingPackage(
-    variant: string | undefined
+    variant: string | undefined,
+    args: Record<string, unknown> = {}
   ): Promise<Record<string, unknown> | undefined> {
     return this.callTool('export_manufacturing_package', {
+      ...args,
       ...(variant ? { variant } : {})
     });
   }

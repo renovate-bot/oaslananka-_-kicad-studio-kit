@@ -212,6 +212,14 @@ export interface DiagnosticSummary {
   capturedAt?: string | undefined;
 }
 
+export interface ProjectContext {
+  id: string;
+  name: string;
+  rootPath: string;
+  projectFile: string;
+  workspaceFolder: string;
+}
+
 export interface KiCadTaskDefinition extends vscode.TaskDefinition {
   task: string;
   file: string;
@@ -233,6 +241,7 @@ export interface ProjectTreeNode {
     | 'folder'
     | 'drc-rule';
   uri?: vscode.Uri | undefined;
+  project?: ProjectContext | undefined;
   children?: ProjectTreeNode[] | undefined;
 }
 
@@ -454,6 +463,11 @@ export interface StudioContext {
   activeFile: string | undefined;
   fileType: 'schematic' | 'pcb' | 'other';
   drcErrors: string[];
+  project?: ProjectContext | undefined;
+  projectId?: string | undefined;
+  projectName?: string | undefined;
+  projectRoot?: string | undefined;
+  projectFile?: string | undefined;
   selectedNet?: string | undefined;
   selectedReference?: string | undefined;
   selectedArea?:

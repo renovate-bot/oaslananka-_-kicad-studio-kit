@@ -1,4 +1,5 @@
 import * as path from 'node:path';
+import * as fs from 'node:fs';
 import * as vscode from 'vscode';
 import {
   buildCliExportCommands,
@@ -16,7 +17,10 @@ import { isWorkspaceTrusted } from '../utils/workspaceTrust';
 import { KiCadCheckService } from '../cli/checkCommands';
 import { KiCadCliDetector } from '../cli/kicadCliDetector';
 import { KiCadCliRunner } from '../cli/kicadCliRunner';
-import type { DiagnosticStateStore } from '../state/stateStores';
+import type {
+  DiagnosticStateStore,
+  ProjectStateStore
+} from '../state/stateStores';
 import {
   createLanguageModelTextPart,
   createLanguageModelToolResult,
@@ -73,6 +77,7 @@ export interface LanguageModelToolServices {
   variantProvider: VariantProvider;
   diagnosticsCollection: vscode.DiagnosticCollection;
   diagnosticState?: DiagnosticStateStore | undefined;
+  projectState?: ProjectStateStore | undefined;
   getStudioContext(): Promise<StudioContext>;
   setLatestDrcRun(value: {
     file: string;
@@ -170,7 +175,11 @@ function createRunDrcTool(
       };
     },
     async invoke(options) {
-      const file = await resolveTargetFile(options.input.pcbPath, '.kicad_pcb');
+      const file = await resolveTargetFile(
+        options.input.pcbPath,
+        '.kicad_pcb',
+        services.projectState?.getActiveProject()?.rootPath
+      );
       if (!file) {
         throw new Error(
           'No KiCad PCB file is available. Provide an absolute pcbPath or open a .kicad_pcb file.'
@@ -207,7 +216,11 @@ function createRunErcTool(
       };
     },
     async invoke(options) {
-      const file = await resolveTargetFile(options.input.schPath, '.kicad_sch');
+      const file = await resolveTargetFile(
+        options.input.schPath,
+        '.kicad_sch',
+        services.projectState?.getActiveProject()?.rootPath
+      );
       if (!file) {
         throw new Error(
           'No KiCad schematic file is available. Provide an absolute schPath or open a .kicad_sch file.'
@@ -242,7 +255,10 @@ function applyValidationResult(
     services.diagnosticState.applyValidationResult(
       uri,
       result.diagnostics,
-      result.summary
+      result.summary,
+      {
+        project: services.projectState?.findProjectForResource(uri)
+      }
     );
     return;
   }
@@ -271,7 +287,11 @@ function createExportGerbersTool(
       };
     },
     async invoke(options, token) {
-      const file = await resolveTargetFile(options.input.pcbPath, '.kicad_pcb');
+      const file = await resolveTargetFile(
+        options.input.pcbPath,
+        '.kicad_pcb',
+        services.projectState?.getActiveProject()?.rootPath
+      );
       if (!file) {
         throw new Error(
           'No KiCad PCB file is available. Provide an absolute pcbPath or open a .kicad_pcb file.'
@@ -547,7 +567,8 @@ function serializeDiagnostic(
 
 async function resolveTargetFile(
   requestedPath: string | undefined,
-  extension: '.kicad_pcb' | '.kicad_sch'
+  extension: '.kicad_pcb' | '.kicad_sch',
+  projectRoot?: string | undefined
 ): Promise<string | undefined> {
   if (requestedPath?.trim()) {
     const candidate = requestedPath.trim();
@@ -560,8 +581,18 @@ async function resolveTargetFile(
   }
 
   const active = vscode.window.activeTextEditor?.document.uri.fsPath;
-  if (active?.endsWith(extension)) {
+  if (
+    active?.endsWith(extension) &&
+    (!projectRoot || belongsToProjectRoot(projectRoot, active))
+  ) {
     return active;
+  }
+
+  if (projectRoot) {
+    const projectFile = findFirstProjectFile(projectRoot, extension);
+    if (projectFile) {
+      return projectFile;
+    }
   }
 
   const files = await vscode.workspace.findFiles(
@@ -571,6 +602,100 @@ async function resolveTargetFile(
   );
   return files[0]?.fsPath;
 }
+
+function findFirstProjectFile(
+  rootPath: string,
+  extension: '.kicad_pcb' | '.kicad_sch'
+): string | undefined {
+  try {
+    const resolvedRoot = path.resolve(rootPath);
+    const files = collectProjectFiles(resolvedRoot, extension, resolvedRoot);
+    return files[0];
+  } catch {
+    return undefined;
+  }
+}
+
+function collectProjectFiles(
+  currentPath: string,
+  extension: '.kicad_pcb' | '.kicad_sch',
+  rootPath: string
+): string[] {
+  const entries = fs.readdirSync(currentPath, { withFileTypes: true });
+  if (
+    currentPath !== rootPath &&
+    entries.some(
+      (entry) =>
+        entry.isFile() && path.extname(entry.name).toLowerCase() === '.kicad_pro'
+    )
+  ) {
+    return [];
+  }
+  return entries
+    .flatMap((entry) => {
+      const absolute = path.join(currentPath, entry.name);
+      if (entry.isDirectory()) {
+        return LM_IGNORED_DIRECTORY_NAMES.has(entry.name.toLowerCase())
+          ? []
+          : collectProjectFiles(absolute, extension, rootPath);
+      }
+      return path.extname(entry.name).toLowerCase() === extension
+        ? [absolute]
+        : [];
+    })
+    .sort();
+}
+
+function isWithinDirectory(rootPath: string, filePath: string): boolean {
+  const relative = path.relative(path.resolve(rootPath), path.resolve(filePath));
+  return !relative.startsWith('..') && !path.isAbsolute(relative);
+}
+
+function belongsToProjectRoot(rootPath: string, filePath: string): boolean {
+  const resolvedRoot = path.resolve(rootPath);
+  let currentPath = path.dirname(path.resolve(filePath));
+  while (isWithinDirectory(resolvedRoot, currentPath)) {
+    if (directoryHasProjectFile(currentPath)) {
+      return path.resolve(currentPath) === resolvedRoot;
+    }
+    const parent = path.dirname(currentPath);
+    if (parent === currentPath) {
+      break;
+    }
+    currentPath = parent;
+  }
+  return true;
+}
+
+function directoryHasProjectFile(directoryPath: string): boolean {
+  try {
+    return fs
+      .readdirSync(directoryPath, { withFileTypes: true })
+      .some(
+        (entry) =>
+          entry.isFile() &&
+          path.extname(entry.name).toLowerCase() === '.kicad_pro'
+      );
+  } catch {
+    return false;
+  }
+}
+
+const LM_IGNORED_DIRECTORY_NAMES = new Set([
+  '.git',
+  'node_modules',
+  'dist',
+  'out',
+  'build',
+  'coverage',
+  '.history',
+  '.code-backups',
+  'generated',
+  'temp',
+  'tmp',
+  'backups',
+  'backup'
+]);
 
 function resolveOutputDir(file: string): string {
   const configured = vscode.workspace
