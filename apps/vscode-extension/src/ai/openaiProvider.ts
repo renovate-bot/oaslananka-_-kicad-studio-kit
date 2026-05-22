@@ -12,6 +12,13 @@ import { createManagedAbortSignal, readEventStream } from './providerUtils';
 
 export type OpenAIApiMode = 'responses' | 'chat-completions';
 
+export interface OpenAIProviderOptions {
+  chatCompletionsUrl?: string;
+  name?: string;
+  requiresApiKey?: boolean;
+  responsesUrl?: string;
+}
+
 interface OpenAITextPart {
   text?: string;
 }
@@ -50,16 +57,33 @@ interface OpenAIStreamEvent {
  * OpenAI provider for KiCad analysis requests.
  */
 export class OpenAIProvider implements AIProvider {
-  readonly name = 'OpenAI';
+  readonly name: string;
+  readonly capabilities: AIProvider['capabilities'];
+  private readonly chatCompletionsUrl: string;
+  private readonly requiresApiKey: boolean;
+  private readonly responsesUrl: string;
 
   constructor(
     private readonly apiKey: string,
     private readonly model: string,
-    private readonly mode: OpenAIApiMode = 'responses'
-  ) {}
+    private readonly mode: OpenAIApiMode = 'responses',
+    options: OpenAIProviderOptions = {}
+  ) {
+    this.name = options.name ?? 'OpenAI';
+    this.requiresApiKey = options.requiresApiKey ?? true;
+    this.capabilities = {
+      requiresApiKey: this.requiresApiKey,
+      supportsStreaming: true
+    };
+    this.chatCompletionsUrl =
+      options.chatCompletionsUrl ??
+      'https://api.openai.com/v1/chat/completions';
+    this.responsesUrl =
+      options.responsesUrl ?? 'https://api.openai.com/v1/responses';
+  }
 
   isConfigured(): boolean {
-    return Boolean(this.apiKey);
+    return this.requiresApiKey ? Boolean(this.apiKey) : true;
   }
 
   async analyze(
@@ -81,7 +105,7 @@ export class OpenAIProvider implements AIProvider {
   ): Promise<void> {
     if (this.mode === 'chat-completions') {
       const response = await this.request(
-        'https://api.openai.com/v1/chat/completions',
+        this.chatCompletionsUrl,
         {
           model: this.model,
           stream: true,
@@ -115,7 +139,7 @@ export class OpenAIProvider implements AIProvider {
     }
 
     const response = await this.request(
-      'https://api.openai.com/v1/responses',
+      this.responsesUrl,
       {
         model: this.model,
         max_output_tokens: AI_MAX_TOKENS,
@@ -209,10 +233,10 @@ export class OpenAIProvider implements AIProvider {
 
     const json = (await response.json()) as OpenAIResponsesResponse;
     if (Array.isArray(json.output_text)) {
-      return json.output_text.join('\n').trim() || 'No response from OpenAI.';
+      return json.output_text.join('\n').trim() || `No response from ${this.name}.`;
     }
     if (typeof json.output_text === 'string') {
-      return json.output_text.trim() || 'No response from OpenAI.';
+      return json.output_text.trim() || `No response from ${this.name}.`;
     }
 
     const output = json.output
@@ -220,7 +244,7 @@ export class OpenAIProvider implements AIProvider {
       .map((part) => part.text)
       .filter((text): text is string => Boolean(text?.trim()))
       .join('\n');
-    return output?.trim() || 'No response from OpenAI.';
+    return output?.trim() || `No response from ${this.name}.`;
   }
 
   private async analyzeWithChatCompletions(
@@ -229,7 +253,7 @@ export class OpenAIProvider implements AIProvider {
     systemPrompt: string
   ): Promise<string> {
     const response = await this.request(
-      'https://api.openai.com/v1/chat/completions',
+      this.chatCompletionsUrl,
       {
         model: this.model,
         // Newer OpenAI models (gpt-4.5, gpt-5, gpt-5-mini, o-series) require
@@ -244,7 +268,8 @@ export class OpenAIProvider implements AIProvider {
 
     const json = (await response.json()) as OpenAIChatResponse;
     return (
-      json.choices?.[0]?.message?.content?.trim() || 'No response from OpenAI.'
+      json.choices?.[0]?.message?.content?.trim() ||
+      `No response from ${this.name}.`
     );
   }
 
@@ -263,13 +288,17 @@ export class OpenAIProvider implements AIProvider {
       signal
     );
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (this.apiKey) {
+        headers['Authorization'] = `Bearer ${this.apiKey}`;
+      }
+
       const response = await fetch(url, {
         method: 'POST',
         signal: managedSignal.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.apiKey}`
-        },
+        headers,
         body: JSON.stringify(body)
       });
 
@@ -301,9 +330,12 @@ export class OpenAIProvider implements AIProvider {
       }
       throw error instanceof Error
         ? new Error(redactApiKey(error.message, this.apiKey), { cause: error })
-        : new Error('OpenAI request failed due to an unknown network error.', {
-            cause: error
-          });
+        : new Error(
+            `${this.name} request failed due to an unknown network error.`,
+            {
+              cause: error
+            }
+          );
     } finally {
       managedSignal.cleanup();
     }
@@ -324,12 +356,12 @@ export class OpenAIProvider implements AIProvider {
 
     const prefix =
       response.status === 401
-        ? 'OpenAI authentication failed. Check the stored API key.'
+        ? `${this.name} authentication failed. Check the stored API key.`
         : response.status === 429
-          ? 'OpenAI rate limit reached. Wait and try again, or choose a different model.'
+          ? `${this.name} rate limit reached. Wait and try again, or choose a different model.`
           : response.status >= 500
-            ? 'OpenAI service returned a server error.'
-            : `OpenAI request failed with HTTP ${response.status}.`;
+            ? `${this.name} service returned a server error.`
+            : `${this.name} request failed with HTTP ${response.status}.`;
     return apiMessage
       ? `${prefix} ${redactApiKey(apiMessage, this.apiKey)}`
       : prefix;

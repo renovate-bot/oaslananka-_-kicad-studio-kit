@@ -3,6 +3,7 @@ import { AI_SECRET_KEY_LEGACY, SETTINGS } from '../constants';
 import type { AIProvider } from '../types';
 import {
   getAiSecretKey,
+  getAiSecretProviders,
   isAiSecretProvider,
   migrateLegacyAiSecret,
   type AiSecretProvider
@@ -10,8 +11,10 @@ import {
 import { ClaudeProvider } from './claudeProvider';
 import { CodexProvider, CopilotProvider } from './copilotProvider';
 import { GeminiProvider } from './geminiProvider';
+import { LocalProvider } from './localProvider';
 import { getDefaultModel } from './modelCatalog';
 import { OpenAIProvider } from './openaiProvider';
+import { OpenRouterProvider } from './openrouterProvider';
 import {
   DEFAULT_CLAUDE_MODEL,
   DEFAULT_GEMINI_MODEL,
@@ -55,6 +58,14 @@ export class AIProviderRegistry {
       return new CodexProvider();
     }
 
+    if (selected === 'local') {
+      const endpoint = vscode.workspace
+        .getConfiguration()
+        .get<string>(SETTINGS.aiLocalEndpoint, '')
+        .trim();
+      return endpoint ? new LocalProvider(endpoint, model) : undefined;
+    }
+
     if (selected === 'claude') {
       const apiKey = await this.getApiKey('claude');
       if (!apiKey) {
@@ -72,6 +83,16 @@ export class AIProviderRegistry {
         apiKey,
         model || DEFAULT_OPENAI_MODEL,
         apiMode === 'chat-completions' ? 'chat-completions' : 'responses'
+      );
+    }
+    if (selected === 'openrouter') {
+      const apiKey = await this.getApiKey('openrouter');
+      if (!apiKey) {
+        return undefined;
+      }
+      return new OpenRouterProvider(
+        apiKey,
+        model || getDefaultModel('openrouter')
       );
     }
     if (selected === 'gemini') {
@@ -102,9 +123,7 @@ export class AIProviderRegistry {
 
   async clearAllApiKeys(): Promise<void> {
     await Promise.all([
-      ...(['claude', 'openai', 'gemini'] as AiSecretProvider[]).map(
-        (provider) => this.clearApiKey(provider)
-      ),
+      ...getAiSecretProviders().map((provider) => this.clearApiKey(provider)),
       this.context.secrets.delete(AI_SECRET_KEY_LEGACY)
     ]);
   }
@@ -112,8 +131,10 @@ export class AIProviderRegistry {
   getDefaultModel(provider: string): string {
     return provider === 'claude' ||
       provider === 'openai' ||
+      provider === 'openrouter' ||
       provider === 'copilot' ||
       provider === 'gemini' ||
+      provider === 'local' ||
       provider === 'codex'
       ? getDefaultModel(provider)
       : '';

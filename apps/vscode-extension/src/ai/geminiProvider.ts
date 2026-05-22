@@ -31,6 +31,10 @@ interface GeminiErrorResponse {
 
 export class GeminiProvider implements AIProvider {
   readonly name = 'Gemini';
+  readonly capabilities = {
+    requiresApiKey: true,
+    supportsStreaming: true
+  };
 
   constructor(
     private readonly apiKey: string,

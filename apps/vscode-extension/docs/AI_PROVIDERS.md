@@ -2,12 +2,14 @@
 
 ## Supported Providers
 
-KiCad Studio supports four AI provider paths:
+KiCad Studio supports six direct AI provider paths:
 
 - Claude
 - OpenAI
+- OpenRouter
 - GitHub Copilot
 - Gemini
+- local OpenAI-compatible endpoints
 
 For compatible VS Code builds, KiCad Studio can also contribute:
 
@@ -27,6 +29,13 @@ For compatible VS Code builds, KiCad Studio can also contribute:
 - The default model comes from the extension's shared provider constants and can be overridden with `kicadstudio.ai.model`.
 - API mode can be `responses` or `chat-completions`.
 
+## OpenRouter
+
+- Set `kicadstudio.ai.provider` to `openrouter`.
+- Store the OpenRouter API key with `KiCad: Set AI API Key`.
+- Set `kicadstudio.ai.model` to an OpenRouter model ID when overriding the shared default.
+- OpenRouter requests use its chat-completions endpoint from the extension host.
+
 ## GitHub Copilot
 
 - Set `kicadstudio.ai.provider` to `copilot`.
@@ -36,8 +45,15 @@ For compatible VS Code builds, KiCad Studio can also contribute:
 ## Gemini
 
 - Set `kicadstudio.ai.provider` to `gemini`.
-- Requires Gemini availability through the VS Code Language Model API in the user environment.
-- No separate API key is stored by KiCad Studio.
+- Store the Gemini API key with `KiCad: Set AI API Key`.
+- The default model comes from the extension's shared provider constants and can be overridden with `kicadstudio.ai.model`.
+
+## Local
+
+- Set `kicadstudio.ai.provider` to `local`.
+- Set `kicadstudio.ai.localEndpoint` to the base URL of a local OpenAI-compatible chat endpoint, for example one that exposes `/v1/chat/completions`.
+- Set `kicadstudio.ai.model` to the model ID expected by that endpoint.
+- KiCad Studio does not store or send an API key for the local provider. Without a configured local endpoint, provider selection falls back to an unconfigured state.
 
 ## Response Language
 
@@ -74,7 +90,8 @@ Use `KiCad: Manage Chat Provider` to:
 
 ## Security Model
 
-- KiCad Studio stores external API keys in VS Code SecretStorage.
+- KiCad Studio stores external API keys in VS Code SecretStorage under provider-specific keys.
+- Legacy plaintext AI and Octopart/Nexar settings are migrated into SecretStorage and cleared from settings during activation.
 - Webviews do not call AI providers directly.
 - Network calls stay in the extension host.
 - Debug logging must never print raw API keys; larger request bodies are redacted.

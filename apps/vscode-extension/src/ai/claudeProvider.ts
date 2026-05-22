@@ -47,6 +47,10 @@ interface ClaudeErrorResponse {
  */
 export class ClaudeProvider implements AIProvider {
   readonly name = 'Claude';
+  readonly capabilities = {
+    requiresApiKey: true,
+    supportsStreaming: true
+  };
 
   constructor(
     private readonly apiKey: string,

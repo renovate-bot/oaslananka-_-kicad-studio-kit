@@ -15,7 +15,12 @@ const SECRET_ASSIGNMENT_PATTERN =
   /\b([A-Za-z0-9_.-]*(?:api[_-]?key|token|secret|password|passwd|auth)[A-Za-z0-9_.-]*)=([^\s,;&]+)/gi;
 
 export function isAiSecretProvider(value: string): value is AiSecretProvider {
-  return value === 'claude' || value === 'openai' || value === 'gemini';
+  return (
+    value === 'claude' ||
+    value === 'openai' ||
+    value === 'openrouter' ||
+    value === 'gemini'
+  );
 }
 
 export function getAiSecretKey(provider: AiSecretProvider): string {
@@ -23,7 +28,7 @@ export function getAiSecretKey(provider: AiSecretProvider): string {
 }
 
 export function getAiSecretProviders(): AiSecretProvider[] {
-  return ['claude', 'openai', 'gemini'];
+  return ['claude', 'openai', 'openrouter', 'gemini'];
 }
 
 export function redactApiKey(value: string, apiKey?: string): string {
@@ -109,4 +114,42 @@ export async function migrateLegacyAiSecret(args: {
   await args.secrets.store(providerKey, legacy);
   await args.secrets.delete(AI_SECRET_KEY_LEGACY);
   return legacy;
+}
+
+export async function migratePlaintextSettingToSecret<TTarget>(args: {
+  config: {
+    get(key: string, fallback: string): string;
+    update(
+      key: string,
+      value: undefined,
+      target: TTarget
+    ): Thenable<void> | Promise<void>;
+  };
+  secrets: {
+    get(key: string): Thenable<string | undefined>;
+    store(key: string, value: string): Thenable<void>;
+  };
+  settingKey: string;
+  secretKey: string;
+  clearTargets: readonly TTarget[];
+  onClearError?: (target: TTarget, error: unknown) => void;
+}): Promise<boolean> {
+  const plaintextValue = args.config.get(args.settingKey, '').trim();
+  if (!plaintextValue) {
+    return false;
+  }
+
+  if (!(await args.secrets.get(args.secretKey))) {
+    await args.secrets.store(args.secretKey, plaintextValue);
+  }
+
+  for (const target of args.clearTargets) {
+    try {
+      await args.config.update(args.settingKey, undefined, target);
+    } catch (error) {
+      args.onClearError?.(target, error);
+    }
+  }
+
+  return true;
 }

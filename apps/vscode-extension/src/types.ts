@@ -198,6 +198,11 @@ export interface AIConnectionResult {
   error?: string | undefined;
 }
 
+export interface AIProviderCapabilities {
+  requiresApiKey: boolean;
+  supportsStreaming: boolean;
+}
+
 export interface DiagnosticSummary {
   file: string;
   errors: number;
@@ -233,6 +238,7 @@ export interface ProjectTreeNode {
 
 export interface AIProvider {
   name: string;
+  capabilities: AIProviderCapabilities;
   analyze(
     prompt: string,
     context: string,

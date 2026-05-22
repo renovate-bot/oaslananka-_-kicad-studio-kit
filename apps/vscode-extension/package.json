@@ -1265,8 +1265,10 @@
             "none",
             "claude",
             "openai",
+            "openrouter",
             "copilot",
             "gemini",
+            "local",
             "codex"
           ],
           "description": "AI provider for circuit analysis and error explanation."
@@ -1274,7 +1276,12 @@
         "kicadstudio.ai.model": {
           "type": "string",
           "default": "",
-          "description": "Optional AI model override. Leave empty to use the provider default: claude-sonnet-4-6 for Claude, gpt-5.5 for OpenAI, or gemini-2.5-pro for Gemini."
+          "description": "Optional AI model override. Leave empty to use the provider default when the provider has one."
+        },
+        "kicadstudio.ai.localEndpoint": {
+          "type": "string",
+          "default": "",
+          "description": "OpenAI-compatible local chat endpoint base URL. KiCad Studio enables the local provider only after this endpoint is configured."
         },
         "kicadstudio.ai.openaiApiMode": {
           "type": "string",

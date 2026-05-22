@@ -81,7 +81,11 @@ import { KiCadTaskProvider } from './tasks/kicadTaskProvider';
 import { VariantProvider } from './variants/variantProvider';
 import { readConfiguredMcpProfile } from './commands/mcpProfilePicker';
 import { Logger } from './utils/logger';
-import { getAiSecretKey, isAiSecretProvider } from './utils/secrets';
+import {
+  getAiSecretKey,
+  isAiSecretProvider,
+  migratePlaintextSettingToSecret
+} from './utils/secrets';
 import {
   getActiveResourceUri,
   workspaceHasVariants
@@ -880,7 +884,11 @@ async function migrateDeprecatedSecretSettings(
   });
 }
 
-function getConfiguredAiSecretProvider(): 'claude' | 'openai' | 'gemini' {
+function getConfiguredAiSecretProvider():
+  | 'claude'
+  | 'openai'
+  | 'openrouter'
+  | 'gemini' {
   const provider = vscode.workspace
     .getConfiguration()
     .get<string>(SETTINGS.aiProvider, 'claude');
@@ -894,44 +902,32 @@ async function migrateDeprecatedSecretSetting(args: {
   secretKey: string;
   label: string;
 }): Promise<void> {
-  const config = vscode.workspace.getConfiguration();
-  const plaintextValue = config.get<string>(args.settingKey, '').trim();
-  if (!plaintextValue) {
+  const migrated = await migratePlaintextSettingToSecret({
+    config: vscode.workspace.getConfiguration(),
+    secrets: args.context.secrets,
+    settingKey: args.settingKey,
+    secretKey: args.secretKey,
+    clearTargets: [
+      vscode.ConfigurationTarget.Global,
+      vscode.ConfigurationTarget.Workspace,
+      vscode.ConfigurationTarget.WorkspaceFolder
+    ],
+    onClearError: (target, error) => {
+      args.logger.debug(
+        `Could not clear deprecated setting ${args.settingKey} at target ${String(target)}: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    }
+  });
+  if (!migrated) {
     return;
   }
 
-  const existingSecret = await args.context.secrets.get(args.secretKey);
-  if (!existingSecret) {
-    await args.context.secrets.store(args.secretKey, plaintextValue);
-  }
-
-  await clearDeprecatedSetting(config, args.settingKey, args.logger);
   args.logger.warn(
     `${args.label} API key was migrated from deprecated plaintext settings to VS Code SecretStorage.`
   );
   void vscode.window.showInformationMessage(
     `${args.label} API key was moved from deprecated settings to VS Code SecretStorage. Plaintext runtime fallback is disabled in KiCad Studio v2.`
   );
-}
-
-async function clearDeprecatedSetting(
-  config: vscode.WorkspaceConfiguration,
-  settingKey: string,
-  logger: Logger
-): Promise<void> {
-  for (const target of [
-    vscode.ConfigurationTarget.Global,
-    vscode.ConfigurationTarget.Workspace,
-    vscode.ConfigurationTarget.WorkspaceFolder
-  ]) {
-    try {
-      await config.update(settingKey, undefined, target);
-    } catch (error) {
-      logger.debug(
-        `Could not clear deprecated setting ${settingKey} at target ${String(target)}: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
-    }
-  }
 }

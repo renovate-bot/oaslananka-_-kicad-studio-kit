@@ -34,6 +34,7 @@ const SETTINGS_KEYS = [
   SETTINGS.viewerEnableSnapshotExport,
   SETTINGS.aiProvider,
   SETTINGS.aiModel,
+  SETTINGS.aiLocalEndpoint,
   SETTINGS.aiOpenAIApiMode,
   SETTINGS.aiGeminiApiMode,
   SETTINGS.aiMaxTokens,

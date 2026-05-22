@@ -122,6 +122,8 @@ async function pickAiSecretProvider(): Promise<AiSecretProvider | undefined> {
 function formatProviderName(provider: AiSecretProvider): string {
   return provider === 'openai'
     ? 'OpenAI'
+    : provider === 'openrouter'
+      ? 'OpenRouter'
     : provider === 'gemini'
       ? 'Gemini'
       : 'Claude';
