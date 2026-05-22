@@ -15,6 +15,9 @@ import { redactSensitiveText } from '../utils/secrets';
 import { KiCadCliDetector } from './kicadCliDetector';
 
 const CLI_OUTPUT_LIMIT_BYTES = 10 * 1024 * 1024;
+const FILE_LIKE_CLI_ARG_PATTERN =
+  /\.(?:kicad_(?:pro|sch|pcb|dru|jobset)|gbr|drl|pdf|svg|zip|csv|xlsx|json|html|net)$/i;
+const URL_LIKE_CLI_ARG_PATTERN = /^[a-z][a-z0-9+.-]*:\/\//i;
 
 /**
  * Runs kicad-cli commands with progress reporting and request de-duplication.
@@ -102,12 +105,24 @@ export class KiCadCliRunner {
     this.controllers.add(controller);
     const startedAt = Date.now();
     const fullArgs = [...(detected.args ?? []), ...command];
-    this.logger.info(formatCliCommand(detected.path, fullArgs));
+    const sensitiveCliPaths = collectSensitiveCliPaths(
+      detected.path,
+      options.cwd,
+      fullArgs
+    );
+    this.logger.info(
+      formatCliCommand(detected.path, fullArgs, sensitiveCliPaths)
+    );
 
     return new Promise<CliResult>((resolve, reject) => {
       const child = spawn(detected.path, fullArgs, {
         cwd: options.cwd,
-        env: { ...process.env, LANGUAGE: 'en', LANG: 'en_US.UTF-8', KICAD_LANGUAGE: 'en' },
+        env: {
+          ...process.env,
+          LANGUAGE: 'en',
+          LANG: 'en_US.UTF-8',
+          KICAD_LANGUAGE: 'en'
+        },
         signal,
         stdio: ['ignore', 'pipe', 'pipe']
       });
@@ -122,7 +137,7 @@ export class KiCadCliRunner {
       const timeout = setTimeout(() => {
         controller.abort(
           new KiCadCliTimeoutError(
-            redactCliArgs(command).join(' '),
+            redactCliArgs(command, sensitiveCliPaths).join(' '),
             CLI_TIMEOUT_MS
           )
         );
@@ -136,7 +151,7 @@ export class KiCadCliRunner {
 
       child.stdout.on('data', (chunk: Buffer) => {
         const text = chunk.toString('utf8');
-        const redactedText = redactSensitiveText(text);
+        const redactedText = redactSensitiveText(text, sensitiveCliPaths);
         const appended = appendBoundedOutput({
           current: stdout,
           chunk,
@@ -159,7 +174,7 @@ export class KiCadCliRunner {
 
       child.stderr.on('data', (chunk: Buffer) => {
         const text = chunk.toString('utf8');
-        const redactedText = redactSensitiveText(text);
+        const redactedText = redactSensitiveText(text, sensitiveCliPaths);
         const appended = appendBoundedOutput({
           current: stderr,
           chunk,
@@ -182,7 +197,12 @@ export class KiCadCliRunner {
 
       child.on('error', (error) => {
         finish(() =>
-          reject(this.normalizeError(error, redactCliArgs(command).join(' ')))
+          reject(
+            this.normalizeError(
+              error,
+              redactCliArgs(command, sensitiveCliPaths).join(' ')
+            )
+          )
         );
       });
 
@@ -201,11 +221,11 @@ export class KiCadCliRunner {
           if ((exitCode ?? -1) !== 0) {
             reject(
               new CliExitError({
-                command: redactCliArgs(command).join(' '),
+                command: redactCliArgs(command, sensitiveCliPaths).join(' '),
                 code: exitCode ?? -1,
-                stdout: redactSensitiveText(stdout),
+                stdout: redactSensitiveText(stdout, sensitiveCliPaths),
                 stderr: this.normalizeCliFailure(
-                  redactSensitiveText(stderr || stdout || '')
+                  redactSensitiveText(stderr || stdout || '', sensitiveCliPaths)
                 )
               })
             );
@@ -353,11 +373,18 @@ function safeRealpath(targetPath: string): string {
   }
 }
 
-function formatCliCommand(command: string, args: string[]): string {
-  return `Running ${redactSensitiveText(command)} ${redactCliArgs(args).join(' ')}`;
+function formatCliCommand(
+  command: string,
+  args: string[],
+  sensitivePaths: readonly string[]
+): string {
+  return `Running ${redactSensitiveText(command, sensitivePaths)} ${redactCliArgs(args, sensitivePaths).join(' ')}`;
 }
 
-function redactCliArgs(args: string[]): string[] {
+function redactCliArgs(
+  args: string[],
+  sensitivePaths: readonly string[] = []
+): string[] {
   const redacted: string[] = [];
   for (let index = 0; index < args.length; index += 1) {
     const current = args[index] ?? '';
@@ -366,9 +393,51 @@ function redactCliArgs(args: string[]): string[] {
       redacted.push(`${key}=***`);
       continue;
     }
-    redacted.push(redactSensitiveText(current));
+    redacted.push(redactSensitiveText(current, sensitivePaths));
   }
   return redacted;
+}
+
+function collectSensitiveCliPaths(
+  cliPath: string,
+  cwd: string,
+  args: readonly string[]
+): string[] {
+  const values = new Set<string>();
+  for (const value of [cliPath, cwd, ...args]) {
+    if (isSensitiveCliPath(value)) {
+      values.add(value);
+      values.add(value.replaceAll('\\', '/'));
+      values.add(value.replaceAll('/', '\\'));
+    }
+  }
+  return [...values]
+    .filter(Boolean)
+    .sort((left, right) => right.length - left.length);
+}
+
+function isSensitiveCliPath(value: string): boolean {
+  if (!value) {
+    return false;
+  }
+  if (URL_LIKE_CLI_ARG_PATTERN.test(value)) {
+    return false;
+  }
+  return (
+    path.isAbsolute(value) ||
+    path.win32.isAbsolute(value) ||
+    FILE_LIKE_CLI_ARG_PATTERN.test(value) ||
+    isRelativeLocalPath(value)
+  );
+}
+
+function isRelativeLocalPath(value: string): boolean {
+  return (
+    !value.startsWith('-') &&
+    !/\s/.test(value) &&
+    /[/\\]/.test(value) &&
+    !URL_LIKE_CLI_ARG_PATTERN.test(value)
+  );
 }
 
 function appendBoundedOutput(options: {
