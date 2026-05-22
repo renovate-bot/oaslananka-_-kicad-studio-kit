@@ -1,4 +1,11 @@
-export type AiProviderId = 'claude' | 'openai' | 'copilot' | 'gemini' | 'codex';
+export type AiProviderId =
+  | 'claude'
+  | 'openai'
+  | 'openrouter'
+  | 'copilot'
+  | 'gemini'
+  | 'local'
+  | 'codex';
 
 export interface ModelInfo {
   id: string;
@@ -164,6 +171,19 @@ export const GEMINI_MODELS: AiModelInfo[] = [
   }
 ];
 
+export const OPENROUTER_MODELS: AiModelInfo[] = [
+  {
+    id: 'openai/gpt-4o',
+    provider: 'openrouter',
+    label: 'OpenAI GPT-4o through OpenRouter',
+    maxTokens: 16384,
+    supportsStreaming: true,
+    contextWindow: 128000,
+    recommended: true,
+    default: true
+  }
+];
+
 export const COPILOT_MODELS: AiModelInfo[] = [
   {
     id: 'copilot/default',
@@ -190,11 +210,15 @@ export const CODEX_MODELS: AiModelInfo[] = [
   }
 ];
 
+export const LOCAL_MODELS: AiModelInfo[] = [];
+
 export const MODEL_CATALOG: Record<AiProviderId, AiModelInfo[]> = {
   claude: CLAUDE_MODELS,
   openai: OPENAI_MODELS,
+  openrouter: OPENROUTER_MODELS,
   gemini: GEMINI_MODELS,
   copilot: COPILOT_MODELS,
+  local: LOCAL_MODELS,
   codex: CODEX_MODELS
 };
 

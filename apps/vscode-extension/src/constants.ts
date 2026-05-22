@@ -33,6 +33,7 @@ export const OCTOPART_SECRET_KEY = 'kicadstudio.secrets.octopart';
 export const AI_SECRET_KEYS = {
   claude: 'kicadstudio.secrets.ai.claude',
   openai: 'kicadstudio.secrets.ai.openai',
+  openrouter: 'kicadstudio.secrets.ai.openrouter',
   gemini: 'kicadstudio.secrets.ai.gemini'
 } as const;
 export type AiProviderName = keyof typeof AI_SECRET_KEYS;
@@ -186,6 +187,7 @@ export const SETTINGS = {
   aiProvider: 'kicadstudio.ai.provider',
   aiApiKey: 'kicadstudio.ai.apiKey',
   aiModel: 'kicadstudio.ai.model',
+  aiLocalEndpoint: 'kicadstudio.ai.localEndpoint',
   aiLanguage: 'kicadstudio.ai.language',
   aiAllowTools: 'kicadstudio.ai.allowTools',
   aiOpenAIApiMode: 'kicadstudio.ai.openaiApiMode',

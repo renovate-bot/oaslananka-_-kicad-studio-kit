@@ -1,5 +1,5 @@
 import { AIProviderRegistry } from '../../src/ai/aiProvider';
-import { AI_SECRET_KEY_LEGACY } from '../../src/constants';
+import { AI_SECRET_KEY_LEGACY, SETTINGS } from '../../src/constants';
 import { getAiSecretKey } from '../../src/utils/secrets';
 import { __setConfiguration, createExtensionContextMock } from './vscodeMock';
 
@@ -12,15 +12,17 @@ describe('AIProviderRegistry per-provider keys', () => {
     const context = createExtensionContextMock();
     const registry = new AIProviderRegistry(context as never);
 
-    await registry.setApiKey('openai', 'openai-key');
+    await registry.setApiKey('openrouter', 'openrouter-key');
 
-    await expect(registry.getApiKey('openai')).resolves.toBe('openai-key');
-    await expect(registry.hasApiKey('openai')).resolves.toBe(true);
+    await expect(registry.getApiKey('openrouter')).resolves.toBe(
+      'openrouter-key'
+    );
+    await expect(registry.hasApiKey('openrouter')).resolves.toBe(true);
     await expect(registry.hasApiKey('claude')).resolves.toBe(false);
 
-    await registry.clearApiKey('openai');
+    await registry.clearApiKey('openrouter');
 
-    await expect(registry.hasApiKey('openai')).resolves.toBe(false);
+    await expect(registry.hasApiKey('openrouter')).resolves.toBe(false);
   });
 
   it('migrates the legacy shared key only to the selected provider secret', async () => {
@@ -98,5 +100,37 @@ describe('AIProviderRegistry per-provider keys', () => {
     await expect(
       context.secrets.get(AI_SECRET_KEY_LEGACY)
     ).resolves.toBeUndefined();
+  });
+
+  it('selects OpenRouter and falls back when local configuration is absent', async () => {
+    const context = createExtensionContextMock();
+    const registry = new AIProviderRegistry(context as never);
+    await registry.setApiKey('openrouter', 'openrouter-key');
+
+    const openRouter = await registry.getProviderForSelection('openrouter');
+    const missingLocal = await registry.getProviderForSelection('local');
+
+    __setConfiguration({
+      [SETTINGS.aiLocalEndpoint]: 'http://127.0.0.1:11434/v1'
+    });
+    const local = await registry.getProviderForSelection('local', 'qwen3');
+
+    expect(openRouter?.name).toBe('OpenRouter');
+    expect(openRouter?.capabilities).toEqual(
+      expect.objectContaining({
+        supportsStreaming: true,
+        requiresApiKey: true
+      })
+    );
+    expect(missingLocal).toBeUndefined();
+    expect(local?.name).toBe('Local');
+    expect(local?.capabilities).toEqual(
+      expect.objectContaining({
+        supportsStreaming: true,
+        requiresApiKey: false
+      })
+    );
+    expect(registry.isKeyedProvider('openrouter')).toBe(true);
+    expect(registry.isKeyedProvider('local')).toBe(false);
   });
 });

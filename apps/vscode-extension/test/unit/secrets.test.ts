@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { AI_SECRET_KEY_LEGACY } from '../../src/constants';
 import {
   getAiSecretKey,
+  migratePlaintextSettingToSecret,
   migrateLegacyAiSecret,
   redactApiKey,
   redactSensitiveText
@@ -61,5 +62,38 @@ describe('AI secret utilities', () => {
 
     expect(store.get(getAiSecretKey('gemini'))).toBe('legacy-secret');
     expect(store.has(AI_SECRET_KEY_LEGACY)).toBe(false);
+  });
+
+  it('moves deprecated plaintext settings into SecretStorage and clears targets', async () => {
+    const secretStore = new Map<string, string>();
+    const config = {
+      get: jest.fn(() => 'plaintext-key'),
+      update: jest.fn(async () => undefined)
+    };
+    const secrets = {
+      get: jest.fn(async (key: string) => secretStore.get(key)),
+      store: jest.fn(async (key: string, value: string) => {
+        secretStore.set(key, value);
+      })
+    };
+
+    await expect(
+      migratePlaintextSettingToSecret({
+        config,
+        secrets,
+        settingKey: 'kicadstudio.ai.apiKey',
+        secretKey: getAiSecretKey('openrouter'),
+        clearTargets: ['global', 'workspace', 'workspaceFolder']
+      })
+    ).resolves.toBe(true);
+
+    expect(secretStore.get(getAiSecretKey('openrouter'))).toBe(
+      'plaintext-key'
+    );
+    expect(config.update.mock.calls).toEqual([
+      ['kicadstudio.ai.apiKey', undefined, 'global'],
+      ['kicadstudio.ai.apiKey', undefined, 'workspace'],
+      ['kicadstudio.ai.apiKey', undefined, 'workspaceFolder']
+    ]);
   });
 });

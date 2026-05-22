@@ -207,14 +207,20 @@ export function buildSettingsHtml(options: SettingsHtmlOptions): string {
             <option value="none">Disabled</option>
             <option value="claude">Claude</option>
             <option value="openai">OpenAI</option>
+            <option value="openrouter">OpenRouter</option>
             <option value="copilot">GitHub Copilot</option>
             <option value="gemini">Gemini</option>
+            <option value="local">Local OpenAI-compatible</option>
             <option value="codex">Codex (VS Code)</option>
           </select>
         </div>
         <div class="field">
           <label for="kicadstudio.ai.model">Model</label>
           <input id="kicadstudio.ai.model" data-setting="kicadstudio.ai.model" type="text" placeholder="Provider default">
+        </div>
+        <div class="field">
+          <label for="kicadstudio.ai.localEndpoint">Local endpoint</label>
+          <input id="kicadstudio.ai.localEndpoint" data-setting="kicadstudio.ai.localEndpoint" type="text" placeholder="http://127.0.0.1:11434/v1">
         </div>
         <div class="field">
           <label for="kicadstudio.ai.openaiApiMode">OpenAI API mode</label>

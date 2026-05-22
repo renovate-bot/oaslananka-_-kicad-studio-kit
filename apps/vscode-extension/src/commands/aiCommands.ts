@@ -125,7 +125,7 @@ export function registerAiCommands(
           {
             label: 'Pick AI provider',
             description:
-              'Choose Claude, OpenAI, Copilot, Gemini, or disable AI.',
+              'Choose a configured remote, VS Code, or local provider.',
             action: 'pick-provider'
           },
           {
@@ -141,7 +141,7 @@ export function registerAiCommands(
           {
             label: 'Clear all AI API keys',
             description:
-              'Remove Claude, OpenAI, and Gemini keys from SecretStorage.',
+              'Remove Claude, OpenAI, OpenRouter, and Gemini keys from SecretStorage.',
             action: 'clear-all'
           },
           {
@@ -172,8 +172,10 @@ export function registerAiCommands(
             { label: 'Disabled', provider: 'none' },
             { label: 'Claude', provider: 'claude' },
             { label: 'OpenAI', provider: 'openai' },
+            { label: 'OpenRouter', provider: 'openrouter' },
             { label: 'GitHub Copilot', provider: 'copilot' },
-            { label: 'Gemini', provider: 'gemini' }
+            { label: 'Gemini', provider: 'gemini' },
+            { label: 'Local OpenAI-compatible', provider: 'local' }
           ],
           {
             title: 'AI provider',
@@ -234,16 +236,20 @@ export function registerAiCommands(
         const provider = (
           selectedProvider === 'claude' ||
           selectedProvider === 'openai' ||
+          selectedProvider === 'openrouter' ||
           selectedProvider === 'copilot' ||
-          selectedProvider === 'gemini'
+          selectedProvider === 'gemini' ||
+          selectedProvider === 'local'
             ? selectedProvider
             : 'claude'
         ) as AiProviderId;
         const knownModels =
           provider === 'claude' ||
           provider === 'openai' ||
+          provider === 'openrouter' ||
           provider === 'copilot' ||
-          provider === 'gemini'
+          provider === 'gemini' ||
+          provider === 'local'
             ? getProviderModels(provider)
             : [];
         const currentModel = vscode.workspace

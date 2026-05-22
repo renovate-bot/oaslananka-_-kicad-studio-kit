@@ -28,6 +28,10 @@ interface MessageFactory {
 abstract class BaseLanguageModelProvider implements AIProvider {
   abstract readonly name: string;
   protected abstract readonly selectors: Array<Record<string, string>>;
+  readonly capabilities = {
+    requiresApiKey: false,
+    supportsStreaming: true
+  };
 
   isConfigured(): boolean {
     return Boolean(this.getLmApi());

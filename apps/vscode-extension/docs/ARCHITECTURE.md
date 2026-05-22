@@ -35,8 +35,9 @@ The extension is activated from KiCad project, schematic, PCB, jobset, or DRC ru
 ## AI Layer
 
 - `AIProviderRegistry` resolves the configured provider and model selection.
-- Claude and OpenAI providers call their remote APIs from the extension host only.
-- Copilot and Gemini providers use the VS Code Language Model API when available.
+- Claude, OpenAI, OpenRouter, and Gemini providers call their remote APIs from the extension host only.
+- The local provider routes to an explicitly configured OpenAI-compatible endpoint without a stored API key.
+- Copilot and Codex providers use the VS Code Language Model API when available.
 - `KiCadChatPanel` is the multi-turn chat UI and can render MCP tool suggestions embedded in assistant replies.
 - Prompt construction in `src/ai/prompts.ts` is KiCad 10-aware and injects active variant / MCP context when available.
 - `src/lm/languageModelTools.ts` registers agent-callable KiCad tools for supported VS Code hosts.
