@@ -131,9 +131,11 @@ _register_many(
 
 _register_many(
     [
+        "sch_add_component",
         "sch_add_symbol",
         "sch_add_wire",
         "sch_add_label",
+        "sch_modify_property",
         "sch_update_properties",
         "sch_build_circuit",
         "sch_annotate",
@@ -160,11 +162,18 @@ _register_many(
 
 _register_many(
     [
+        "pcb_place_component",
+        "pcb_route_trace",
         "pcb_add_footprint",
         "pcb_move_footprint",
+        "pcb_move_component",
         "pcb_sync_from_schematic",
         "pcb_add_track",
+        "pcb_add_zone",
         "pcb_add_via",
+        "pcb_set_design_rules",
+        "pcb_delete_object",
+        "pcb_delete_items",
         "pcb_run_autorouter",
     ],
     profiles=_PCB_PROFILES,

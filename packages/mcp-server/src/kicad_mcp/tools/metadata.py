@@ -123,7 +123,19 @@ def infer_tool_annotations(
 
     is_write = (
         normalized.startswith(_WRITE_PREFIXES)
-        or any(token in normalized for token in ("_add_", "_set_", "_update_", "_delete_"))
+        or any(
+            token in normalized
+            for token in (
+                "_add_",
+                "_delete_",
+                "_modify_",
+                "_move_",
+                "_place_",
+                "_route_",
+                "_set_",
+                "_update_",
+            )
+        )
         or any(
             token in normalized
             for token in (

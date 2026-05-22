@@ -2682,6 +2682,30 @@ def register(mcp: FastMCP) -> None:
         return "Track added successfully."
 
     @mcp.tool()
+    @requires_kicad_running
+    def pcb_route_trace(
+        x1_mm: float,
+        y1_mm: float,
+        x2_mm: float,
+        y2_mm: float,
+        layer: str = "F_Cu",
+        width_mm: float = 0.25,
+        net_name: str = "",
+    ) -> str:
+        """Route a trace segment through the KiCad IPC-backed track tool."""
+        return str(
+            pcb_add_track(
+                x1_mm=x1_mm,
+                y1_mm=y1_mm,
+                x2_mm=x2_mm,
+                y2_mm=y2_mm,
+                layer=layer,
+                width_mm=width_mm,
+                net_name=net_name,
+            )
+        )
+
+    @mcp.tool()
     def pcb_add_tracks_bulk(tracks: list[BulkTrackItem]) -> str:
         """Add multiple tracks in a single operation."""
         validated = [BulkTrackItem.model_validate(track) for track in tracks]
@@ -2985,6 +3009,7 @@ def register(mcp: FastMCP) -> None:
         )
 
     @mcp.tool()
+    @requires_kicad_running
     def pcb_delete_items(item_ids: list[str]) -> str:
         """Delete items by UUID."""
         from kipy.proto.common.types import KIID
@@ -2999,6 +3024,12 @@ def register(mcp: FastMCP) -> None:
         with board_transaction() as board:
             board.remove_items_by_id(kiids)
         return f"Deleted {len(kiids)} item(s)."
+
+    @mcp.tool()
+    @requires_kicad_running
+    def pcb_delete_object(object_id: str) -> str:
+        """Delete a single PCB object by UUID through KiCad IPC."""
+        return str(pcb_delete_items([object_id]))
 
     @mcp.tool()
     def pcb_save() -> str:
@@ -3032,6 +3063,36 @@ def register(mcp: FastMCP) -> None:
         return (
             "Direct net class assignment is not exposed as a stable KiCad 10.x IPC operation. "
             f"Update the project rules for net '{net_name}' to use class '{class_name}'."
+        )
+
+    @mcp.tool()
+    @requires_kicad_running
+    def pcb_place_component(
+        reference: str, x_mm: float, y_mm: float, rotation_deg: float = 0.0
+    ) -> str:
+        """Place an already-synced PCB component at an absolute location."""
+        return str(
+            pcb_move_footprint(
+                reference=reference,
+                x_mm=x_mm,
+                y_mm=y_mm,
+                rotation_deg=rotation_deg,
+            )
+        )
+
+    @mcp.tool()
+    @requires_kicad_running
+    def pcb_move_component(
+        reference: str, x_mm: float, y_mm: float, rotation_deg: float = 0.0
+    ) -> str:
+        """Move a PCB component by reference using the live footprint operation."""
+        return str(
+            pcb_move_footprint(
+                reference=reference,
+                x_mm=x_mm,
+                y_mm=y_mm,
+                rotation_deg=rotation_deg,
+            )
         )
 
     @mcp.tool()

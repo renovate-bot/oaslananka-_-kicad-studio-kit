@@ -31,6 +31,7 @@ interop aliases for launchers and editors:
 | Alias | Internal field |
 |---|---|
 | `KICAD_API_TOKEN` | KiCad IPC token |
+| `KICAD_API_SOCKET` | KiCad IPC socket path |
 | `KICAD_CLI_PATH` | `kicad-cli` path |
 | `KICAD_MCP_TIMEOUT_MS` | IPC timeout in milliseconds |
 | `KICAD_MCP_RETRIES` | IPC connection retries |
@@ -43,6 +44,19 @@ interop aliases for launchers and editors:
 
 Diagnostics only report whether tokens are configured. Token values are never
 printed.
+
+## KiCad IPC Capability Discovery
+
+`kicad_get_server_info` reports the live IPC state that MCP clients use to gate
+editing workflows. The contract includes the resolved IPC endpoint source,
+KiCad IPC/API version, live PCB and schematic context flags, and a
+`liveEditingTools` map for the OASLANA-119 tool names. When KiCad IPC is
+unavailable, live editing tools are hidden from MCP tool discovery while
+file-backed read, DRC, ERC, and export operations remain available when their
+CLI/project prerequisites are satisfied.
+
+For external KiCad plugin launchers, `KICAD_API_SOCKET` and `KICAD_API_TOKEN`
+are accepted alongside the `KICAD_MCP_*` equivalents.
 
 ## Structured Logging
 

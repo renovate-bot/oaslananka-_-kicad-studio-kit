@@ -10,10 +10,12 @@ from typing import Literal, cast
 from . import __version__
 from .compatibility import MCP_PROTOCOL_VERSION, MCP_TOOL_SCHEMA_VERSION, compatibility_summary
 from .config import get_config
-from .connection import KiCadConnectionError, get_board, get_kicad
+from .connection import get_board, get_kicad
 from .discovery import CliCapabilities, get_cli_capabilities
+from .ipc.capabilities import get_ipc_capability_state
+from .ipc.client import KiCadIpcClient
 
-SERVER_INFO_SCHEMA_VERSION = "1.0.0"
+SERVER_INFO_SCHEMA_VERSION = "1.1.0"
 _BIND_ALL_HOSTS = {"0.0.0.0", "::"}  # noqa: S104 - bind-all sentinel, not a socket bind.
 _SEMVER_NUMBER_RE = re.compile(r"\d+")
 TransportType = Literal["stdio", "streamable-http", "sse"]
@@ -33,12 +35,14 @@ def get_server_info_contract(*, probe_live_context: bool = True) -> dict[str, ob
     """Return the stable server-info/capabilities payload for clients."""
     cfg = get_config()
     cli = _cached_cli_discovery(cfg.kicad_cli)
-    ipc_available, live_pcb_context, live_diagnostic = (
-        _probe_live_context() if probe_live_context else (False, False, None)
+    ipc_state = get_ipc_capability_state(
+        client=KiCadIpcClient(client_factory=get_kicad, board_factory=get_board),
+        fallback_version=cli.version,
+        probe_live_context=probe_live_context,
     )
     diagnostics = _diagnostics(
         cli_found=cli.found,
-        live_diagnostic=live_diagnostic,
+        live_diagnostics=ipc_state.diagnostics,
     )
     return {
         "schemaVersion": SERVER_INFO_SCHEMA_VERSION,
@@ -52,15 +56,23 @@ def get_server_info_contract(*, probe_live_context: bool = True) -> dict[str, ob
             "cliFound": cli.found,
             "cliPath": str(cfg.kicad_cli),
             "cliVersion": cli.version,
-            "ipcAvailable": ipc_available,
-            "livePcbContext": live_pcb_context,
+            "ipcAvailable": ipc_state.reachable,
+            "ipcVersion": ipc_state.version,
+            "ipcApiVersion": ipc_state.api_version,
+            "ipcMajorVersion": ipc_state.major_version,
+            "ipcEndpointSource": ipc_state.endpoint.source,
+            "livePcbContext": ipc_state.live_pcb_context,
+            "liveSchematicContext": ipc_state.live_schematic_context,
         },
         "capabilities": {
             "fileBackedDrc": cli.found,
             "fileBackedErc": cli.found,
             "fileBackedExports": cli.found,
-            "livePcbRead": live_pcb_context,
-            "livePcbWrite": live_pcb_context,
+            "livePcbRead": ipc_state.live_pcb_read,
+            "livePcbWrite": ipc_state.live_pcb_write,
+            "liveSchematicRead": ipc_state.live_schematic_read,
+            "liveSchematicWrite": ipc_state.live_schematic_write,
+            "liveEditingTools": ipc_state.live_editing_contract(),
             "chatgptConnectorCompatible": False,
             "cliExports": {
                 "ipc2581": bool(cli.capabilities and cli.capabilities.supports_ipc2581),
@@ -108,35 +120,13 @@ def _endpoint(transport_type: TransportType | None = None) -> str | None:
     return f"http://{host}:{cfg.port}{cfg.mount_path}"
 
 
-def _probe_live_context() -> tuple[bool, bool, str | None]:
-    try:
-        get_kicad()
-    except KiCadConnectionError as exc:
-        message = str(exc).splitlines()[0] or "KiCad IPC is unavailable."
-        return False, False, f"KiCad IPC is unavailable: {message}"
-    except Exception as exc:  # pragma: no cover - defensive probe boundary
-        message = str(exc).splitlines()[0] or exc.__class__.__name__
-        return False, False, f"KiCad IPC probe failed: {message}"
-
-    try:
-        get_board()
-    except KiCadConnectionError as exc:
-        message = str(exc).splitlines()[0] or "KiCad IPC is unavailable."
-        return True, False, f"Live KiCad PCB context is unavailable: {message}"
-    except Exception as exc:  # pragma: no cover - defensive probe boundary
-        message = str(exc).splitlines()[0] or exc.__class__.__name__
-        return True, False, f"Live KiCad PCB context probe failed: {message}"
-    return True, True, None
-
-
-def _diagnostics(*, cli_found: bool, live_diagnostic: str | None) -> list[str]:
+def _diagnostics(*, cli_found: bool, live_diagnostics: tuple[str, ...]) -> list[str]:
     diagnostics: list[str] = []
     if not cli_found:
         diagnostics.append(
             "KiCad CLI is unavailable; file-backed DRC/ERC/export operations are disabled."
         )
-    if live_diagnostic is not None:
-        diagnostics.append(live_diagnostic)
+    diagnostics.extend(live_diagnostics)
     return diagnostics
 
 

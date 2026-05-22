@@ -51,7 +51,7 @@ def test_server_info_contract_matches_protocol_schema(monkeypatch, sample_projec
     payload = get_server_info_contract()
 
     _validate_contract(payload)
-    assert payload["schemaVersion"] == "1.0.0"
+    assert payload["schemaVersion"] == "1.1.0"
     assert payload["server"] == "kicad-mcp-pro"
     assert payload["mcpProtocolVersion"] == "2025-11-25"
     assert payload["toolSchemaVersion"] == "1.0.0"
@@ -79,14 +79,84 @@ def test_server_info_contract_matches_protocol_schema(monkeypatch, sample_projec
         "cliPath": str(sample_project.parent / "kicad-cli"),
         "cliVersion": "KiCad 10.0.3",
         "ipcAvailable": True,
+        "ipcVersion": "KiCad 10.0.3",
+        "ipcApiVersion": None,
+        "ipcMajorVersion": 10,
+        "ipcEndpointSource": "default",
         "livePcbContext": True,
+        "liveSchematicContext": False,
     }
-    assert payload["capabilities"] == {
+    capabilities = payload["capabilities"]
+    assert capabilities == {
         "fileBackedDrc": True,
         "fileBackedErc": True,
         "fileBackedExports": True,
         "livePcbRead": True,
         "livePcbWrite": True,
+        "liveSchematicRead": False,
+        "liveSchematicWrite": False,
+        "liveEditingTools": {
+            "pcb_place_component": {
+                "available": True,
+                "backend": "kicad-ipc",
+                "reason": None,
+                "minimumKiCadMajor": 9,
+            },
+            "pcb_route_trace": {
+                "available": True,
+                "backend": "kicad-ipc",
+                "reason": None,
+                "minimumKiCadMajor": 9,
+            },
+            "pcb_add_zone": {
+                "available": True,
+                "backend": "kicad-ipc",
+                "reason": None,
+                "minimumKiCadMajor": 9,
+            },
+            "pcb_set_design_rules": {
+                "available": True,
+                "backend": "hybrid-file-ipc",
+                "reason": None,
+                "minimumKiCadMajor": 9,
+            },
+            "pcb_move_component": {
+                "available": True,
+                "backend": "kicad-ipc",
+                "reason": None,
+                "minimumKiCadMajor": 9,
+            },
+            "pcb_delete_object": {
+                "available": True,
+                "backend": "kicad-ipc",
+                "reason": None,
+                "minimumKiCadMajor": 9,
+            },
+            "sch_add_component": {
+                "available": False,
+                "backend": "hybrid-file-ipc",
+                "reason": (
+                    "Live schematic writes require KiCad 10+ with an open schematic document."
+                ),
+                "minimumKiCadMajor": 10,
+            },
+            "sch_add_wire": {
+                "available": False,
+                "backend": "hybrid-file-ipc",
+                "reason": (
+                    "Live schematic writes require KiCad 10+ with an open schematic document."
+                ),
+                "minimumKiCadMajor": 10,
+            },
+            "sch_modify_property": {
+                "available": False,
+                "backend": "hybrid-file-ipc",
+                "reason": (
+                    "Live schematic writes require KiCad 10+ with an open schematic document."
+                ),
+                "minimumKiCadMajor": 10,
+            },
+        },
         "chatgptConnectorCompatible": False,
         "cliExports": {
             "ipc2581": True,
@@ -116,6 +186,7 @@ def test_server_info_contract_reports_degraded_live_context(monkeypatch, sample_
     assert payload["kicad"]["livePcbContext"] is False
     assert payload["capabilities"]["livePcbRead"] is False
     assert payload["capabilities"]["livePcbWrite"] is False
+    assert payload["capabilities"]["liveEditingTools"]["pcb_route_trace"]["available"] is False
     assert "Live KiCad PCB context is unavailable: No PCB is open." in payload["diagnostics"]
 
 
@@ -132,6 +203,7 @@ def test_server_info_contract_reports_unavailable_ipc(monkeypatch, sample_projec
     _validate_contract(payload)
     assert payload["kicad"]["ipcAvailable"] is False
     assert payload["kicad"]["livePcbContext"] is False
+    assert payload["capabilities"]["liveEditingTools"]["pcb_place_component"]["available"] is False
     assert "KiCad IPC is unavailable: KiCad is not running." in payload["diagnostics"]
 
 
@@ -151,6 +223,7 @@ def test_server_info_contract_skips_live_probe_for_metadata(monkeypatch, sample_
     _validate_contract(payload)
     assert payload["kicad"]["ipcAvailable"] is False
     assert payload["kicad"]["livePcbContext"] is False
+    assert payload["capabilities"]["liveSchematicWrite"] is False
 
 
 def test_server_info_contract_caches_cli_discovery(monkeypatch, sample_project) -> None:

@@ -48,7 +48,7 @@ from ..utils.sexpr import (
     _sexpr_string,
     _unescape_sexpr_string,
 )
-from .metadata import headless_compatible
+from .metadata import headless_compatible, requires_kicad_running
 
 SCHEMATIC_GRID_MM = 2.54
 SNAP_TOLERANCE_MM = 1e-6
@@ -3343,6 +3343,36 @@ def register(mcp: FastMCP) -> None:
         return "\n".join(parts)
 
     @mcp.tool()
+    @requires_kicad_running
+    def sch_add_component(
+        library: str,
+        symbol_name: str,
+        x_mm: float,
+        y_mm: float,
+        reference: str,
+        value: str,
+        footprint: str = "",
+        rotation: int = 0,
+        snap_to_grid: bool = True,
+        unit: int = 1,
+    ) -> str:
+        """Add a schematic component through the hybrid IPC reload path."""
+        return str(
+            sch_add_symbol(
+                library=library,
+                symbol_name=symbol_name,
+                x_mm=x_mm,
+                y_mm=y_mm,
+                reference=reference,
+                value=value,
+                footprint=footprint,
+                rotation=rotation,
+                snap_to_grid=snap_to_grid,
+                unit=unit,
+            )
+        )
+
+    @mcp.tool()
     def sch_add_wire(
         x1_mm: float,
         y1_mm: float,
@@ -3654,6 +3684,12 @@ def register(mcp: FastMCP) -> None:
         """Update a property on a placed symbol."""
         result = update_symbol_property(reference, field, value)
         return f"{result}\n{_reload_schematic()}"
+
+    @mcp.tool()
+    @requires_kicad_running
+    def sch_modify_property(reference: str, field: str, value: str) -> str:
+        """Modify a schematic symbol property by reference."""
+        return str(sch_update_properties(reference, field, value))
 
     @mcp.tool()
     def sch_move_symbol(

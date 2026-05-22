@@ -36,6 +36,7 @@ def _registered_tools(profile: str) -> dict[str, object]:
     buffer = io.StringIO()
     with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(buffer):
         server = build_server(profile=profile)
+    server.filter_runtime_tools = False
     return {tool.name: tool for tool in server.list_tools_sync()}
 
 
