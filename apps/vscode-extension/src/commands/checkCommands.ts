@@ -14,7 +14,9 @@ export function registerCheckCommands(
     registerTrustedCommand(
       COMMANDS.runDRC,
       async (resource?: vscode.Uri) => {
-        const file = await resolveTargetFile(resource, '.kicad_pcb');
+        const file = await resolveTargetFile(resource, '.kicad_pcb', {
+          projectRoot: services.projectState.getActiveProject()?.rootPath
+        });
         if (!file) {
           return;
         }
@@ -59,7 +61,9 @@ export function registerCheckCommands(
     registerTrustedCommand(
       COMMANDS.runERC,
       async (resource?: vscode.Uri) => {
-        const file = await resolveTargetFile(resource, '.kicad_sch');
+        const file = await resolveTargetFile(resource, '.kicad_sch', {
+          projectRoot: services.projectState.getActiveProject()?.rootPath
+        });
         if (!file) {
           return;
         }
@@ -104,7 +108,10 @@ function applyValidationResult(
     services.diagnosticState.applyValidationResult(
       uri,
       result.diagnostics,
-      result.summary
+      result.summary,
+      {
+        project: services.projectState.findProjectForResource(uri)
+      }
     );
     return;
   }

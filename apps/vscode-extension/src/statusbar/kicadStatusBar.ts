@@ -11,6 +11,7 @@ import type {
 // Priority decreases left-to-right within Left-aligned items.
 // Higher number = further left.
 const P = {
+  project: 510,
   kicad: 500,
   drc: 490,
   erc: 480,
@@ -22,6 +23,7 @@ const P = {
 } as const;
 
 export class KiCadStatusBar implements vscode.Disposable {
+  private readonly projectItem: vscode.StatusBarItem;
   private readonly kicadItem: vscode.StatusBarItem;
   private readonly drcItem: vscode.StatusBarItem;
   private readonly ercItem: vscode.StatusBarItem;
@@ -43,9 +45,15 @@ export class KiCadStatusBar implements vscode.Disposable {
   private mcpVersion: string | undefined;
   private mcpMessage: string | undefined;
   private mcpProfile: string | undefined;
+  private activeProjectName: string | undefined;
   private activeVariant: string | undefined;
 
   constructor(_context: vscode.ExtensionContext) {
+    this.projectItem = this.make(
+      P.project,
+      COMMANDS.selectActiveProject,
+      'Select Active KiCad Project'
+    );
     this.kicadItem = this.make(
       P.kicad,
       COMMANDS.showStatusMenu,
@@ -81,6 +89,7 @@ export class KiCadStatusBar implements vscode.Disposable {
     mcpConnected?: boolean;
     mcpState?: McpConnectionState | undefined;
     mcpProfile?: string | undefined;
+    activeProjectName?: string | undefined;
     activeVariant?: string | undefined;
   }): void {
     this.cli = update.cli ?? this.cli;
@@ -99,6 +108,10 @@ export class KiCadStatusBar implements vscode.Disposable {
       this.mcpMessage = update.mcpState.message;
     }
     this.mcpProfile = update.mcpProfile ?? this.mcpProfile;
+    this.activeProjectName =
+      'activeProjectName' in update
+        ? update.activeProjectName
+        : this.activeProjectName;
     this.activeVariant = update.activeVariant ?? this.activeVariant;
     this.render();
   }
@@ -115,6 +128,7 @@ export class KiCadStatusBar implements vscode.Disposable {
     mcpCompat: McpCompatStatus | undefined;
     mcpVersion: string | undefined;
     mcpProfile: string | undefined;
+    activeProjectName: string | undefined;
   } {
     return {
       cli: this.cli,
@@ -127,7 +141,8 @@ export class KiCadStatusBar implements vscode.Disposable {
       mcpKind: this.mcpKind,
       mcpCompat: this.mcpCompat,
       mcpVersion: this.mcpVersion,
-      mcpProfile: this.mcpProfile
+      mcpProfile: this.mcpProfile,
+      activeProjectName: this.activeProjectName
     };
   }
 
@@ -140,6 +155,7 @@ export class KiCadStatusBar implements vscode.Disposable {
   // ── render ────────────────────────────────────────────────────────────────
 
   private render(): void {
+    this.renderProject();
     this.renderKicad();
     this.renderDrc();
     this.renderErc();
@@ -147,6 +163,19 @@ export class KiCadStatusBar implements vscode.Disposable {
     this.renderAi();
     this.renderMcp();
     this.renderVariant();
+  }
+
+  private renderProject(): void {
+    if (!this.activeProjectName) {
+      this.projectItem.hide();
+      this.projectItem.backgroundColor = undefined;
+      return;
+    }
+    this.projectItem.show();
+    this.projectItem.text = `$(repo) ${this.activeProjectName}`;
+    this.projectItem.tooltip = `Active KiCad project: ${this.activeProjectName}. Click to switch.`;
+    this.projectItem.command = COMMANDS.selectActiveProject;
+    this.projectItem.backgroundColor = undefined;
   }
 
   private renderKicad(): void {
@@ -339,6 +368,7 @@ export class KiCadStatusBar implements vscode.Disposable {
 
   private allItems(): vscode.StatusBarItem[] {
     return [
+      this.projectItem,
       this.kicadItem,
       this.drcItem,
       this.ercItem,

@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { findFirstWorkspaceFile } from './pathUtils';
 import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 /**
  * Returns the URI of the currently active editor resource, falling back to
@@ -25,14 +26,25 @@ export function getActiveResourceUri(): vscode.Uri | undefined {
  */
 export async function resolveTargetFile(
   resource: vscode.Uri | undefined,
-  extname: string
+  extname: string,
+  options: { projectRoot?: string | undefined } = {}
 ): Promise<string | undefined> {
   if (resource?.fsPath.endsWith(extname)) {
     return resource.fsPath;
   }
   const active = getActiveResourceUri();
-  if (active?.fsPath.endsWith(extname)) {
+  if (
+    active?.fsPath.endsWith(extname) &&
+    (!options.projectRoot ||
+      belongsToProjectRoot(options.projectRoot, active.fsPath))
+  ) {
     return active.fsPath;
+  }
+  if (options.projectRoot) {
+    const projectFile = await findFirstProjectFile(options.projectRoot, extname);
+    if (projectFile) {
+      return projectFile;
+    }
   }
   const files = await vscode.workspace.findFiles(
     `**/*${extname}`,
@@ -40,6 +52,97 @@ export async function resolveTargetFile(
     1
   );
   return files[0]?.fsPath;
+}
+
+async function findFirstProjectFile(
+  rootPath: string,
+  extname: string
+): Promise<string | undefined> {
+  const resolvedRoot = path.resolve(rootPath);
+  try {
+    await fs.promises.access(resolvedRoot);
+  } catch {
+    return undefined;
+  }
+
+  const entries = await collectFiles(resolvedRoot, extname, resolvedRoot);
+  return entries[0];
+}
+
+async function collectFiles(
+  currentPath: string,
+  extname: string,
+  rootPath: string
+): Promise<string[]> {
+  let entries: fs.Dirent[];
+  try {
+    entries = await fs.promises.readdir(currentPath, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+
+  if (
+    currentPath !== rootPath &&
+    entries.some(
+      (entry) =>
+        entry.isFile() && path.extname(entry.name).toLowerCase() === '.kicad_pro'
+    )
+  ) {
+    return [];
+  }
+
+  const matches: string[] = [];
+  for (const entry of entries) {
+    const absolute = path.join(currentPath, entry.name);
+    if (entry.isDirectory()) {
+      if (!IGNORED_DIRECTORY_NAMES.has(entry.name.toLowerCase())) {
+        matches.push(...(await collectFiles(absolute, extname, rootPath)));
+      }
+      continue;
+    }
+    if (
+      path.extname(entry.name).toLowerCase() === extname.toLowerCase() &&
+      !entry.name.toLowerCase().endsWith('.lck')
+    ) {
+      matches.push(absolute);
+    }
+  }
+  return matches.sort();
+}
+
+function isWithinDirectory(rootPath: string, filePath: string): boolean {
+  const relative = path.relative(path.resolve(rootPath), path.resolve(filePath));
+  return !relative.startsWith('..') && !path.isAbsolute(relative);
+}
+
+function belongsToProjectRoot(rootPath: string, filePath: string): boolean {
+  const resolvedRoot = path.resolve(rootPath);
+  let currentPath = path.dirname(path.resolve(filePath));
+  while (isWithinDirectory(resolvedRoot, currentPath)) {
+    if (directoryHasProjectFile(currentPath)) {
+      return path.resolve(currentPath) === resolvedRoot;
+    }
+    const parent = path.dirname(currentPath);
+    if (parent === currentPath) {
+      break;
+    }
+    currentPath = parent;
+  }
+  return true;
+}
+
+function directoryHasProjectFile(directoryPath: string): boolean {
+  try {
+    return fs
+      .readdirSync(directoryPath, { withFileTypes: true })
+      .some(
+        (entry) =>
+          entry.isFile() &&
+          path.extname(entry.name).toLowerCase() === '.kicad_pro'
+      );
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -65,3 +168,19 @@ export async function workspaceHasVariants(): Promise<boolean> {
     return false;
   }
 }
+
+const IGNORED_DIRECTORY_NAMES = new Set([
+  '.git',
+  'node_modules',
+  'dist',
+  'out',
+  'build',
+  'coverage',
+  '.history',
+  '.code-backups',
+  'generated',
+  'temp',
+  'tmp',
+  'backups',
+  'backup'
+]);

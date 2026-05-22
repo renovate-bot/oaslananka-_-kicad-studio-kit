@@ -38,7 +38,9 @@ export function registerAiCommands(
         if (!(await requireWorkspaceTrust('Run proactive DRC analysis'))) {
           return;
         }
-        const file = await resolveTargetFile(undefined, '.kicad_pcb');
+        const file = await resolveTargetFile(undefined, '.kicad_pcb', {
+          projectRoot: services.projectState.getActiveProject()?.rootPath
+        });
         if (!file) {
           return;
         }

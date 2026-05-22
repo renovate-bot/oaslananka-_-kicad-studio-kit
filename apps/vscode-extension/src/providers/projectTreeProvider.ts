@@ -2,7 +2,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { COMMANDS } from '../constants';
-import type { ProjectTreeNode } from '../types';
+import type { ProjectContext, ProjectTreeNode } from '../types';
+import { discoverKiCadProjects } from '../workspace/projectContext';
 
 class KiCadTreeItem extends vscode.TreeItem {
   constructor(
@@ -20,6 +21,16 @@ class KiCadTreeItem extends vscode.TreeItem {
     this.iconPath = new vscode.ThemeIcon(iconForNode(node, diagnostics));
 
     if (
+      node.project &&
+      node.uri &&
+      hasExtension(node.uri.fsPath, '.kicad_pro')
+    ) {
+      this.command = {
+        command: COMMANDS.selectActiveProject,
+        title: `Set Active Project: ${node.project.name}`,
+        arguments: [node]
+      };
+    } else if (
       node.uri &&
       (node.type === 'schematic' ||
         node.type === 'pcb' ||
@@ -92,7 +103,8 @@ export class KiCadProjectTreeProvider implements vscode.TreeDataProvider<Project
       symbolFiles,
       footprintFiles,
       models,
-      fabFiles
+      fabFiles,
+      discoveredProjects
     ] = await Promise.all([
       collectFiles(
         rootPath,
@@ -106,13 +118,21 @@ export class KiCadProjectTreeProvider implements vscode.TreeDataProvider<Project
       collectFiles(
         resolvedOutputPath,
         /\.(gbr|drl|pdf|svg|zip|glb|csv|xlsx|json|html|net)$/i
-      )
+      ),
+      discoverKiCadProjects([{ uri: vscode.Uri.file(rootPath) }] as never)
     ]);
+    const projectByFile = new Map(
+      discoveredProjects.map((project) => [
+        pathComparisonKey(project.projectFile),
+        project
+      ])
+    );
 
     const children: ProjectTreeNode[] = [
       groupProjectNodes(
         'Project Files',
-        projectFiles.filter((file) => hasExtension(file, '.kicad_pro'))
+        projectFiles.filter((file) => hasExtension(file, '.kicad_pro')),
+        projectByFile
       ),
       groupProjectNodes(
         'Schematic Sheets',
@@ -198,15 +218,22 @@ interface TreeDiagnostics {
   total: number;
 }
 
-function groupProjectNodes(label: string, files: string[]): ProjectTreeNode {
+function groupProjectNodes(
+  label: string,
+  files: string[],
+  projectsByFile?: ReadonlyMap<string, ProjectContext>
+): ProjectTreeNode {
   return {
     label,
     type: 'folder',
-    children: files.map(projectFileNode)
+    children: files.map((file) => projectFileNode(file, projectsByFile))
   };
 }
 
-function projectFileNode(file: string): ProjectTreeNode {
+function projectFileNode(
+  file: string,
+  projectsByFile?: ReadonlyMap<string, ProjectContext>
+): ProjectTreeNode {
   const extension = normalizedExtension(file);
   return {
     label: path.basename(file),
@@ -217,7 +244,11 @@ function projectFileNode(file: string): ProjectTreeNode {
         : extension === '.kicad_dru'
           ? 'drc-rule'
           : 'file',
-    uri: vscode.Uri.file(file)
+    uri: vscode.Uri.file(file),
+    project:
+      extension === '.kicad_pro'
+        ? projectsByFile?.get(pathComparisonKey(file))
+        : undefined
   };
 }
 

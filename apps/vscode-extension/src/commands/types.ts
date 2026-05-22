@@ -20,8 +20,11 @@ import type { McpLogger } from '../mcp/mcpLogger';
 import type { QualityGateProvider } from '../providers/qualityGateProvider';
 import type { KiCadProjectTreeProvider } from '../providers/projectTreeProvider';
 import type { Logger } from '../utils/logger';
-import type { DiagnosticSummary } from '../types';
-import type { DiagnosticStateStore } from '../state/stateStores';
+import type { DiagnosticSummary, ProjectContext } from '../types';
+import type {
+  DiagnosticStateStore,
+  ProjectStateStore
+} from '../state/stateStores';
 
 /**
  * Shared service dependencies that are passed to all command registration
@@ -36,6 +39,7 @@ export interface CommandServices {
   diffEditorProvider: DiffEditorProvider;
   fixQueueProvider: FixQueueProvider;
   diagnosticsCollection: vscode.DiagnosticCollection;
+  projectState: ProjectStateStore;
   diagnosticState?: DiagnosticStateStore | undefined;
   statusBar: KiCadStatusBar;
   componentSearch: ComponentSearchService;
@@ -67,6 +71,7 @@ export interface CommandServices {
   }) => void;
   setAiHealthy: (value: boolean | undefined) => void;
   pushStudioContext: () => Promise<void>;
+  selectActiveProject: (project: ProjectContext | string) => Promise<void>;
   refreshContexts: () => Promise<void>;
   refreshMcpState: () => Promise<void>;
 }

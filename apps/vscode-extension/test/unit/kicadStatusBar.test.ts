@@ -68,12 +68,27 @@ function makeBar(): KiCadStatusBar {
   return new KiCadStatusBar({} as never);
 }
 
-// Indices in allItems(): kicad=0, drc=1, erc=2, sep1=3, ai=4, mcp=5, sep2=6, variant=7
+// Existing item helper preserves the pre-project indices used by these tests:
+// kicad=0, drc=1, erc=2, sep1=3, ai=4, mcp=5, sep2=6, variant=7.
 function item(index: number) {
-  return Object.values(items)[index]!;
+  return Object.values(items)[index + 1]!;
+}
+
+function projectItem() {
+  return Object.values(items)[0]!;
 }
 
 describe('KiCadStatusBar', () => {
+  describe('Project item', () => {
+    it('shows active project name and switch command', () => {
+      const bar = makeBar();
+      bar.update({ activeProjectName: 'alpha' });
+      expect(projectItem().text).toContain('alpha');
+      expect(projectItem().command).toBe('kicadstudio.selectActiveProject');
+      bar.dispose();
+    });
+  });
+
   describe('KiCad CLI item (index 0)', () => {
     it('shows warning when kicad-cli not found', () => {
       const bar = makeBar();

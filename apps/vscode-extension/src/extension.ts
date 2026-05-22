@@ -92,7 +92,17 @@ import {
   workspaceHasVariants
 } from './utils/workspaceUtils';
 import { isWorkspaceTrusted } from './utils/workspaceTrust';
-import type { DiagnosticSummary, McpInstallStatus } from './types';
+import type {
+  DiagnosticSummary,
+  McpInstallStatus,
+  ProjectContext,
+  StudioContext
+} from './types';
+import {
+  ACTIVE_PROJECT_STORAGE_KEY,
+  discoverKiCadProjects,
+  pickActiveProject
+} from './workspace/projectContext';
 
 let extensionLogger: Logger | undefined;
 let extensionMcpClient: McpClient | undefined;
@@ -160,12 +170,14 @@ export async function activate(
   const schematicEditorProvider = new SchematicEditorProvider(
     context,
     async (resource) => exportService.renderViewerSvg(resource),
-    viewerState
+    viewerState,
+    (resource) => projectState.findProjectForResource(resource)
   );
   const pcbEditorProvider = new PcbEditorProvider(
     context,
     async (resource) => exportService.renderViewerSvg(resource),
-    viewerState
+    viewerState,
+    (resource) => projectState.findProjectForResource(resource)
   );
   const gitDiffDetector = new GitDiffDetector(parser);
   const diffEditorProvider = new DiffEditorProvider(context, gitDiffDetector);
@@ -177,7 +189,9 @@ export async function activate(
     logger: mcpLogger
   });
   extensionMcpClient = mcpClient;
-  const mcpToolAdapter = new McpToolAdapter(mcpClient);
+  const mcpToolAdapter = new McpToolAdapter(mcpClient, () =>
+    projectState.getActiveProject()
+  );
   const contextBridge = new ContextBridge(mcpToolAdapter);
   const mcpToolsProvider = new McpToolsProvider(mcpState);
   const variantProvider = new VariantProvider(mcpToolAdapter);
@@ -399,6 +413,7 @@ export async function activate(
     fixQueueProvider,
     qualityGateProvider,
     diagnosticsCollection,
+    projectState,
     diagnosticState,
     statusBar,
     componentSearch,
@@ -416,7 +431,9 @@ export async function activate(
     treeProvider,
     context,
     logger,
-    getLatestDrcRun: () => latestDrcRun,
+    getLatestDrcRun: () =>
+      diagnosticState.getLatestDrcRun(projectState.getActiveProject()?.id) ??
+      latestDrcRun,
     setLatestDrcRun: (value) => {
       latestDrcRun = value;
     },
@@ -424,6 +441,7 @@ export async function activate(
       aiHealthy = value;
     },
     pushStudioContext: () => pushStudioContext('default'),
+    selectActiveProject,
     refreshContexts,
     refreshMcpState
   });
@@ -439,6 +457,7 @@ export async function activate(
       variantProvider,
       diagnosticsCollection,
       diagnosticState,
+      projectState,
       getStudioContext: buildStudioContext,
       setLatestDrcRun: (value) => {
         latestDrcRun = value;
@@ -490,40 +509,36 @@ export async function activate(
 
   async function refreshContexts(): Promise<void> {
     const activeUri = getActiveResourceUri();
+    const projects = await discoverKiCadProjects(vscode.workspace.workspaceFolders);
     const hasProject =
-      (
-        await vscode.workspace.findFiles(
-          '**/*.kicad_pro',
-          '**/node_modules/**',
-          1
-        )
-      ).length > 0 ||
-      (
-        await vscode.workspace.findFiles(
-          '**/*.kicad_sch',
-          '**/node_modules/**',
-          1
-        )
-      ).length > 0 ||
-      (
-        await vscode.workspace.findFiles(
-          '**/*.kicad_pcb',
-          '**/node_modules/**',
-          1
-        )
-      ).length > 0;
+      projects.length > 0 ||
+      (await vscode.workspace.findFiles('**/*.kicad_sch', '**/node_modules/**', 1))
+        .length > 0 ||
+      (await vscode.workspace.findFiles('**/*.kicad_pcb', '**/node_modules/**', 1))
+        .length > 0;
     const trusted = isWorkspaceTrusted();
     const provider = await aiProviders.getProvider();
     const cli = trusted ? await cliDetector.detect() : undefined;
     const kicadVersionMajor = Number(cli?.version.split('.')[0] ?? '0');
     const hasVariants = await workspaceHasVariants();
     const mcpProfile = readConfiguredMcpProfile();
+    const persistedProjectId = context.workspaceState.get<string>(
+      ACTIVE_PROJECT_STORAGE_KEY
+    );
+    const activeProject = pickActiveProject(projects, {
+      previousActiveProjectId: projectState.getActiveProject()?.id,
+      persistedActiveProjectId: persistedProjectId,
+      activeResourcePath: activeUri?.fsPath
+    });
     const projectSnapshot = projectState.update({
       activeResource: activeUri,
+      projects,
+      activeProject,
       hasProject,
       hasVariants,
       workspaceTrusted: trusted
     });
+    diagnosticState.setActiveProject(projectSnapshot.activeProject?.id);
     await vscode.commands.executeCommand(
       'setContext',
       CONTEXT_KEYS.hasProject,
@@ -572,8 +587,34 @@ export async function activate(
     statusBar.update({
       aiConfigured: Boolean(provider?.isConfigured()),
       aiHealthy,
-      mcpProfile
+      mcpProfile,
+      activeProjectName: projectSnapshot.activeProject?.name,
+      drc: diagnosticState.getSnapshot().drc,
+      erc: diagnosticState.getSnapshot().erc
     });
+  }
+
+  async function selectActiveProject(
+    projectOrId: ProjectContext | string
+  ): Promise<void> {
+    const project =
+      typeof projectOrId === 'string'
+        ? projectState.findProjectById(projectOrId)
+        : projectOrId;
+    if (!project) {
+      return;
+    }
+    await context.workspaceState.update(ACTIVE_PROJECT_STORAGE_KEY, project.id);
+    const snapshot = projectState.update({ activeProject: project });
+    diagnosticState.setActiveProject(project.id);
+    const diagnostics = diagnosticState.getSnapshot();
+    statusBar.update({
+      activeProjectName: snapshot.activeProject?.name,
+      drc: diagnostics.drc,
+      erc: diagnostics.erc
+    });
+    treeProvider.refresh();
+    await pushStudioContext('focus');
   }
 
   async function runConfiguredSaveChecks(
@@ -598,7 +639,10 @@ export async function activate(
       diagnosticState.applyValidationResult(
         vscode.Uri.file(document.fileName),
         result.diagnostics,
-        result.summary
+        result.summary,
+        {
+          project: projectState.findProjectForResource(document.fileName)
+        }
       );
       if (shouldRunDrc) {
         latestDrcRun = {
@@ -759,35 +803,14 @@ export async function activate(
     }
   }
 
-  async function buildStudioContext(): Promise<{
-    activeFile: string | undefined;
-    fileType: 'schematic' | 'pcb' | 'other';
-    drcErrors: string[];
-    selectedNet?: string | undefined;
-    selectedReference?: string | undefined;
-    selectedArea?:
-      | {
-          x1: number;
-          y1: number;
-          x2: number;
-          y2: number;
-        }
-      | undefined;
-    activeVariant?: string | undefined;
-    mcpConnected?: boolean | undefined;
-    cursorPosition?:
-      | {
-          line: number;
-          character: number;
-        }
-      | undefined;
-    activeSheetPath?: string | undefined;
-    visibleLayers?: string[] | undefined;
-    kicadVersion?: string | undefined;
-    designBlocks?: string[] | undefined;
-  }> {
+  async function buildStudioContext(): Promise<StudioContext> {
     const activeUri = getActiveResourceUri();
     const activeEditor = vscode.window.activeTextEditor;
+    const selectedProject = projectState.getActiveProject();
+    const resourceProject = activeUri
+      ? projectState.findProjectForResource(activeUri)
+      : undefined;
+    const activeProject = selectedProject ?? resourceProject;
     const fileType = activeUri?.fsPath.endsWith('.kicad_sch')
       ? 'schematic'
       : activeUri?.fsPath.endsWith('.kicad_pcb')
@@ -801,11 +824,18 @@ export async function activate(
           : undefined;
     const mcpState = isWorkspaceTrusted() ? mcpClient.getState() : undefined;
     const cli = isWorkspaceTrusted() ? await cliDetector.detect() : undefined;
+    const latestProjectDrcRun =
+      diagnosticState.getLatestDrcRun(activeProject?.id) ?? latestDrcRun;
     return {
       activeFile: activeUri?.fsPath,
       fileType,
+      project: activeProject,
+      projectId: activeProject?.id,
+      projectName: activeProject?.name,
+      projectRoot: activeProject?.rootPath,
+      projectFile: activeProject?.projectFile,
       drcErrors:
-        latestDrcRun?.diagnostics
+        latestProjectDrcRun?.diagnostics
           .map((diagnostic) => diagnostic.message)
           .slice(0, 20) ?? [],
       selectedReference: viewerState?.selectedReference,
@@ -819,7 +849,9 @@ export async function activate(
       activeSheetPath:
         fileType === 'schematic' && activeUri
           ? path.relative(
-              vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '',
+              activeProject?.rootPath ??
+                vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ??
+                '',
               activeUri.fsPath
             )
           : undefined,
