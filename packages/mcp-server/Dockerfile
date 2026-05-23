@@ -22,7 +22,7 @@ ARG KICAD_CLI_APK_PACKAGE=
 ENV PYTHONDONTWRITEBYTECODE=1 \
   PYTHONUNBUFFERED=1 \
   KICAD_MCP_TRANSPORT=streamable-http \
-  KICAD_MCP_HOST=127.0.0.1
+  KICAD_MCP_HOST=0.0.0.0
 WORKDIR /app
 
 LABEL io.modelcontextprotocol.server.name="io.github.oaslananka/kicad-mcp-pro" \

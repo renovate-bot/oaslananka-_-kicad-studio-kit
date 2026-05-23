@@ -28,7 +28,7 @@ This matrix describes the supported runtime surface for KiCad MCP Pro.
 | Transport       | Status                                 | Invocation                                                                                                                                |
 | --------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | stdio           | Default for direct CLI installs        | `uvx kicad-mcp-pro` or `docker run --rm -i ghcr.io/oaslananka/kicad-mcp-pro:<version> --transport stdio`                                  |
-| streamable-http | Default for the published Docker image | `docker run --rm -p 127.0.0.1:3334:3334 -e KICAD_MCP_AUTH_TOKEN=... -e KICAD_MCP_HOST=0.0.0.0 ghcr.io/oaslananka/kicad-mcp-pro:<version>` |
+| streamable-http | Default for the published Docker image | `docker run --rm -p 127.0.0.1:3334:3334 -e KICAD_MCP_AUTH_TOKEN=... ghcr.io/oaslananka/kicad-mcp-pro:<version>` |
 
 HTTP mode should be bound only on trusted networks unless authentication,
 network policy, and CORS are configured.

@@ -58,7 +58,6 @@ Run the default streamable HTTP image:
 ```bash
 docker run --rm -p 127.0.0.1:3334:3334 \
   -e KICAD_MCP_AUTH_TOKEN="replace-with-strong-32-character-token" \
-  -e KICAD_MCP_HOST=0.0.0.0 \
   ghcr.io/oaslananka/kicad-mcp-pro:<version>
 ```
 

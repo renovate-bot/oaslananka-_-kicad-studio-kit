@@ -66,6 +66,8 @@ def test_docker_image_builds_and_exposes_stdio_cli_smoke() -> None:
         assert config["Entrypoint"] == ["kicad-mcp-pro-entrypoint"]
         assert config["Cmd"] == ["--transport", "streamable-http"]
         assert "3334/tcp" in config["ExposedPorts"]
+        assert "KICAD_MCP_HOST=0.0.0.0" in config["Env"]
+        assert "KICAD_MCP_TRANSPORT=streamable-http" in config["Env"]
 
         help_result = subprocess.run(
             [docker, "run", "--rm", tag, "--help"],
@@ -94,7 +96,16 @@ def test_docker_image_builds_and_exposes_stdio_cli_smoke() -> None:
         assert "KiCad MCP Pro server" in explicit_help.stdout
 
         health = subprocess.run(
-            [docker, "run", "--rm", tag, "health", "--json"],
+            [
+                docker,
+                "run",
+                "--rm",
+                "-e",
+                "KICAD_MCP_AUTH_TOKEN=test-token-with-at-least-32-characters",
+                tag,
+                "health",
+                "--json",
+            ],
             cwd=ROOT,
             capture_output=True,
             text=True,

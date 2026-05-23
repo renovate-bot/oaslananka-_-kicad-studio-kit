@@ -7,8 +7,10 @@ ghcr.io/oaslananka/kicad-mcp-pro
 ```
 
 The image runs as the non-root `kicadmcp` user, exposes port `3334`, and starts
-`kicad-mcp-pro --transport streamable-http` by default. It does not contain
-secrets.
+`kicad-mcp-pro --transport streamable-http` by default. It binds to `0.0.0.0`
+inside the container so Docker port publishing reaches the server; keep the
+published host port on loopback unless a trusted proxy or tunnel handles
+access. It does not contain secrets.
 
 ## Help Smoke Test
 
@@ -32,7 +34,6 @@ Run the default streamable HTTP server for local connector testing:
 docker run --rm \
   -p 127.0.0.1:3334:3334 \
   -e KICAD_MCP_AUTH_TOKEN="replace-with-strong-32-character-token" \
-  -e KICAD_MCP_HOST=0.0.0.0 \
   -e KICAD_MCP_PROJECT_DIR=/projects \
   -v "$PWD:/projects:ro" \
   ghcr.io/oaslananka/kicad-mcp-pro:<version>

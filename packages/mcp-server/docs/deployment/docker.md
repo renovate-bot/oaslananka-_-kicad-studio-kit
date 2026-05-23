@@ -4,7 +4,8 @@ For install and client examples, see [Docker Install](../install/docker.md).
 
 The published image is `ghcr.io/oaslananka/kicad-mcp-pro`. It is built from the
 multi-stage `packages/mcp-server/Dockerfile`, runs as a non-root user, exposes
-port `3334`, and defaults to streamable HTTP.
+port `3334`, and defaults to streamable HTTP. It binds to `0.0.0.0` inside the
+container so Docker port publishing can reach the server.
 
 ## Local HTTP Service
 
@@ -12,7 +13,6 @@ port `3334`, and defaults to streamable HTTP.
 docker run --rm \
   -p 127.0.0.1:3334:3334 \
   -e KICAD_MCP_AUTH_TOKEN="replace-with-strong-32-character-token" \
-  -e KICAD_MCP_HOST=0.0.0.0 \
   -e KICAD_MCP_PROJECT_DIR=/projects \
   -e KICAD_MCP_OUTPUT_DIR=/tmp/kicad-mcp-output \
   -v "$PWD:/projects:ro" \
@@ -40,7 +40,7 @@ terminating proxy or tunnel.
 | Variable                | Purpose                                                                                                          |
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `KICAD_MCP_TRANSPORT`   | Defaults to `streamable-http`; set `stdio` only when overriding the Docker command for stdio clients.            |
-| `KICAD_MCP_HOST`        | Use `0.0.0.0` inside Docker when publishing port `3334`; this requires `KICAD_MCP_AUTH_TOKEN`.                   |
+| `KICAD_MCP_HOST`        | Defaults to `0.0.0.0` inside Docker so published port `3334` reaches the server.                                 |
 | `KICAD_MCP_PORT`        | Defaults to `3334`.                                                                                              |
 | `KICAD_MCP_AUTH_TOKEN`  | Required when HTTP binds outside loopback. Use a 32+ character token and pass it as a bearer token from clients. |
 | `KICAD_MCP_PROJECT_DIR` | In-container project mount path, typically `/projects`.                                                          |

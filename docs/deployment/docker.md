@@ -8,7 +8,9 @@ ghcr.io/oaslananka/kicad-mcp-pro
 
 The image is built from `packages/mcp-server/Dockerfile`, runs as a non-root
 user, exposes `3334/tcp`, and starts `kicad-mcp-pro --transport
-streamable-http` by default.
+streamable-http` by default. Inside the container it binds to `0.0.0.0` so
+Docker port publishing can reach the server; keep the published host port bound
+to loopback unless a trusted reverse proxy or tunnel handles access.
 
 ## Run Locally
 
@@ -16,7 +18,6 @@ streamable-http` by default.
 docker run --rm \
   -p 127.0.0.1:3334:3334 \
   -e KICAD_MCP_AUTH_TOKEN="replace-with-strong-32-character-token" \
-  -e KICAD_MCP_HOST=0.0.0.0 \
   -e KICAD_MCP_PROJECT_DIR=/projects \
   -v "$PWD:/projects:ro" \
   ghcr.io/oaslananka/kicad-mcp-pro:<version>
@@ -41,7 +42,7 @@ version tag or GHCR digest.
 | Variable                | Purpose                                                                          |
 | ----------------------- | -------------------------------------------------------------------------------- |
 | `KICAD_MCP_TRANSPORT`   | Defaults to `streamable-http`; use `stdio` only for explicit stdio client runs.  |
-| `KICAD_MCP_HOST`        | Set to `0.0.0.0` in Docker when publishing the port.                             |
+| `KICAD_MCP_HOST`        | Defaults to `0.0.0.0` in Docker so port publishing reaches the server.           |
 | `KICAD_MCP_PORT`        | Defaults to `3334`.                                                              |
 | `KICAD_MCP_AUTH_TOKEN`  | Required when HTTP binds outside loopback. Pass it to clients as a bearer token. |
 | `KICAD_MCP_PROJECT_DIR` | In-container KiCad project path.                                                 |

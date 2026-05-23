@@ -67,6 +67,11 @@ def main() -> int:
     dockerfile = dockerfiles["Dockerfile"]
     if "python:3.12.13-alpine3.22@sha256:" not in dockerfile:
         errors.append("Dockerfile must use the Trivy-clean pinned Python Alpine base")
+    if (
+        "ENV PYTHONDONTWRITEBYTECODE=1" not in dockerfile
+        or "KICAD_MCP_HOST=0.0.0.0" not in dockerfile
+    ):
+        errors.append("Dockerfile must bind streamable HTTP to all container interfaces by default")
     if "ARG KICAD_CLI_APK_PACKAGE" not in dockerfile:
         errors.append("Dockerfile must support build-time KiCad CLI package installation via APK")
     if "apk upgrade --no-cache" not in dockerfile:
