@@ -35,7 +35,7 @@ Replace the five screenshots in `docs/assets/screenshots/` with real 1920x1080 c
 - Confirm the package owner is Osman Aslan before external submission.
 - Confirm `oaslananka.dev` domain verification can be completed before ChatGPT Apps submission.
 - Confirm PyPI Trusted Publisher is active before registry publish.
-- Confirm GHCR image `ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro:<version>` exists before registry publish.
+- Confirm GHCR image `ghcr.io/oaslananka/kicad-mcp-pro:<version>` exists before registry publish.
 - Confirm the docs site is live at `https://oaslananka.github.io/kicad-studio-kit`.
 - Confirm the privacy page is live at `https://oaslananka.github.io/kicad-studio-kit/privacy/`.
 - Confirm support URL is `https://github.com/oaslananka/kicad-studio-kit/issues`.
@@ -56,7 +56,7 @@ Replace the five screenshots in `docs/assets/screenshots/` with real 1920x1080 c
 - Support: `https://github.com/oaslananka/kicad-studio-kit/issues`.
 - MCP server name: `io.github.oaslananka/kicad-mcp-pro`.
 - PyPI package: `kicad-mcp-pro`.
-- Container image: `ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro:<version>`.
+- Container image: `ghcr.io/oaslananka/kicad-mcp-pro:<version>`.
 - Default transport: `stdio`.
 - Primary category: `EDA / Hardware Design`.
 - Fallback category: `Developer Tools`.

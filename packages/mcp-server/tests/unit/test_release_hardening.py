@@ -670,15 +670,17 @@ def test_security_and_publish_workflows_emit_supply_chain_evidence() -> None:
         assert "actions/attest@" in workflow
 
 
-def test_docker_metadata_contains_mcp_oci_label_and_no_mutable_image_tags() -> None:
+def test_docker_metadata_contains_mcp_oci_label_and_release_image_contract() -> None:
     root = Path(__file__).resolve().parents[2]
     dockerfile = (root / "Dockerfile").read_text(encoding="utf-8")
     kicad_dockerfile = (root / "Dockerfile.kicad10").read_text(encoding="utf-8")
     compose = (root / "docker-compose.yml").read_text(encoding="utf-8")
     registry_workflow = _workflow("publish-mcp-registry.yml")
+    container_workflow = _workflow("publish-mcp-container.yml")
     uv_toml = (root / "uv.toml").read_text(encoding="utf-8")
     docker_install = (root / "docs" / "install" / "docker.md").read_text(encoding="utf-8")
     publishing = (root / "docs" / "publishing.md").read_text(encoding="utf-8")
+    deployment = (root / "docs" / "deployment" / "docker.md").read_text(encoding="utf-8")
     uv_version = tomllib.loads(uv_toml).get("required-version")
     assert uv_version
 
@@ -691,17 +693,52 @@ def test_docker_metadata_contains_mcp_oci_label_and_no_mutable_image_tags() -> N
         assert "ARG KICAD_MCP_VERSION" in content
         assert "ARG VCS_REF" in content
         assert "@sha256:" in content
+        assert "EXPOSE 3334" in content
+        assert 'CMD ["--transport", "streamable-http"]' in content
+        assert "ARG DEBIAN_FRONTEND=noninteractive" in content
+        assert "--disable-pip-version-check" in content
+        assert "--root-user-action=ignore" in content
 
     assert "pip install --no-cache-dir uv" not in dockerfile
     assert "pip install --no-cache-dir uv" not in kicad_dockerfile
     assert f"UV_VERSION={uv_version}" in dockerfile
     assert f"UV_VERSION={uv_version}" in kicad_dockerfile
+    assert "ARG KICAD_CLI_APT_PACKAGE" in dockerfile
     assert "ENV KICAD_MCP_HOST=127.0.0.1" in kicad_dockerfile
     assert "ghcr.io/freerouting/freerouting:2.1.0@sha256:" in compose
     assert ":latest" not in compose
     assert "type=raw,value=latest" not in registry_workflow
-    assert "ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro:latest" not in docker_install
-    assert "ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro:latest" not in publishing
+    assert "ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro" not in docker_install
+    assert "ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro" not in publishing
+    assert "ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro" not in deployment
+
+    assert "ghcr.io/oaslananka/kicad-mcp-pro" in container_workflow
+    assert "linux/amd64,linux/arm64" in container_workflow
+    assert "outputs: type=cacheonly" in container_workflow
+    assert "mcp-server-v" in container_workflow
+    assert "ghcr.io/oaslananka/kicad-mcp-pro:latest" in container_workflow
+    assert "packages: write" in container_workflow
+    assert "id-token: write" in container_workflow
+    assert "docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a" in container_workflow
+    assert "tonistiigi/binfmt:qemu-v10.0.4@sha256:" in container_workflow
+    assert (
+        "docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5" in container_workflow
+    )
+    assert "moby/buildkit:v0.26.2@sha256:" in container_workflow
+    assert "docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee" in container_workflow
+    assert "docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9" in container_workflow
+    assert "docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf" in container_workflow
+    assert (
+        "sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6" in container_workflow
+    )
+    assert "cosign-release: v3.0.6" in container_workflow
+    assert (
+        "aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25" in container_workflow
+    )
+    assert "version: v0.70.0" in container_workflow
+    assert "sbom: true" in container_workflow
+    assert "provenance: mode=max" in container_workflow
+    assert "cosign sign --yes" in container_workflow
 
 
 def test_scorecard_workflow_uses_pinned_actions_without_artifact_storage() -> None:

@@ -78,23 +78,26 @@ gh attestation verify dist/kicad_mcp_pro-<version>.tar.gz \
 Inspect the published image digest:
 
 ```bash
-docker buildx imagetools inspect ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro:<version>
+docker buildx imagetools inspect ghcr.io/oaslananka/kicad-mcp-pro:<version>
 ```
 
 Pull by digest for reproducible deployment:
 
 ```bash
-docker pull ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro@sha256:<digest>
+docker pull ghcr.io/oaslananka/kicad-mcp-pro@sha256:<digest>
 ```
 
-Verify the image attestation with GitHub CLI:
+Verify the keyless Sigstore signature:
 
 ```bash
-gh attestation verify oci://ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro@sha256:<digest> \
-  --repo oaslananka/kicad-studio-kit
+cosign verify \
+  --certificate-identity-regexp "https://github.com/oaslananka/kicad-studio-kit/.github/workflows/publish-mcp-container.yml@refs/tags/mcp-server-v.*" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  ghcr.io/oaslananka/kicad-mcp-pro@sha256:<digest>
 ```
 
-The Docker workflow publishes provenance only when the image is pushed.
+The Docker workflow publishes BuildKit provenance and SBOM attestations only
+when the image is pushed.
 
 ## PyPI Trusted Publishing
 

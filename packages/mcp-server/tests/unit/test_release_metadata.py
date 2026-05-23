@@ -96,7 +96,7 @@ def test_release_metadata_is_synchronised() -> None:
     assert all(package["version"] == version for package in server_json["packages"])
     assert all(package["version"] == version for package in mcp_json["packages"])
     assert server_oci["registry"] == "container"
-    assert server_oci["image"] == "ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro"
+    assert server_oci["image"] == "ghcr.io/oaslananka/kicad-mcp-pro"
     assert server_oci["identifier"] == f"{server_oci['image']}:{version}"
     assert mcp_oci["identifier"] == f"{mcp_oci['image']}:{version}"
     assert server_oci["version"] == version

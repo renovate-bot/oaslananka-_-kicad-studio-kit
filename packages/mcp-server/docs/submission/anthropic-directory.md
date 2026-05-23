@@ -142,7 +142,7 @@ Use this document when submitting KiCad MCP Pro to the Anthropic Connector Direc
 - [ ] Confirm `lychee --verbose --no-progress README.md docs/**/*.md` passes after link edits.
 - [ ] Confirm `server.json` and `mcp.json` versions match the package version.
 - [ ] Confirm the PyPI package name remains `kicad-mcp-pro`.
-- [ ] Confirm the OCI image namespace remains `ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro`.
+- [ ] Confirm the OCI image namespace remains `ghcr.io/oaslananka/kicad-mcp-pro`.
 - [ ] Confirm no retired owner namespace appears in copied form text.
 - [ ] Confirm no token, cookie, private key, or `.env` value appears in evidence.
 - [ ] Confirm no customer KiCad project is uploaded as reviewer evidence.

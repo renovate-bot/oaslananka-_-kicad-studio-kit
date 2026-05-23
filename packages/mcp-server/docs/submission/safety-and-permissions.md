@@ -74,7 +74,9 @@ uv run --all-extras properdocs build -f mkdocs.yml --strict
 
 ```bash
 VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
-cosign verify ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro:${VERSION}
+cosign verify ghcr.io/oaslananka/kicad-mcp-pro:${VERSION} \
+  --certificate-identity-regexp "https://github.com/oaslananka/kicad-studio-kit/.github/workflows/publish-mcp-container.yml@refs/tags/mcp-server-v.*" \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
 ## Reviewer Safety Assertions

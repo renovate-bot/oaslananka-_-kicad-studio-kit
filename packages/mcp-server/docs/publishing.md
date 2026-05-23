@@ -35,28 +35,37 @@ Verification guidance lives in
 
 ## GHCR Container Image
 
-Container image publishing is handled by `.github/workflows/docker-publish.yml`
-in the canonical repository. The image name is:
+Container image publishing is handled by
+`.github/workflows/publish-mcp-container.yml` in the canonical repository. The
+image name is:
 
 ```text
-ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro
+ghcr.io/oaslananka/kicad-mcp-pro
 ```
 
-The Docker workflow runs from published GitHub Releases and uses the
-release-please tag as the image version. Provenance attestation runs only when
-an image was pushed. The workflow does not publish a mutable `latest` tag; use
-the release version tag or the immutable GHCR digest.
+The Docker workflow validates the image on pull requests, publishes only for
+MCP server release tags such as `mcp-server-v1.1.0`, and pushes multi-arch
+`linux/amd64` and `linux/arm64` images to GHCR. Stable releases also update
+`ghcr.io/oaslananka/kicad-mcp-pro:latest`; production deployments should use
+the release version tag or immutable GHCR digest.
 
-Use the stdio image with MCP clients:
+The publish job signs the pushed image digest with Sigstore `cosign`, requests
+BuildKit provenance, attaches a BuildKit SBOM, and runs Trivy against the image
+digest before signing.
+
+Run the default streamable HTTP image:
 
 ```bash
-docker run --rm -i ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro:<version>
+docker run --rm -p 127.0.0.1:3334:3334 \
+  -e KICAD_MCP_AUTH_TOKEN="replace-with-strong-32-character-token" \
+  -e KICAD_MCP_HOST=0.0.0.0 \
+  ghcr.io/oaslananka/kicad-mcp-pro:<version>
 ```
 
-Run streamable HTTP explicitly:
+Use stdio explicitly for stdio-only MCP clients:
 
 ```bash
-docker run --rm -p 3334:3334 ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro:<version> kicad-mcp-pro serve --transport http --host 0.0.0.0 --port 3334
+docker run --rm -i ghcr.io/oaslananka/kicad-mcp-pro:<version> --transport stdio
 ```
 
 DockerHub publishing is not enabled. The configured DockerHub secrets are
@@ -149,6 +158,7 @@ the package must be configured in npm before a guarded workflow is added.
 Required GitHub environment:
 
 - `mcp-registry`
+- `ghcr`
 
 Required GitHub secrets:
 
@@ -167,7 +177,7 @@ Linux and macOS:
 ```bash
 uvx kicad-mcp-pro
 pipx install kicad-mcp-pro
-docker run --rm -i ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro:<version>
+docker run --rm -i ghcr.io/oaslananka/kicad-mcp-pro:<version> --transport stdio
 ```
 
 Windows PowerShell:
@@ -175,7 +185,7 @@ Windows PowerShell:
 ```powershell
 uvx kicad-mcp-pro
 pipx install kicad-mcp-pro
-docker run --rm -i ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro:<version>
+docker run --rm -i ghcr.io/oaslananka/kicad-mcp-pro:<version> --transport stdio
 ```
 
 Claude Desktop stdio example:
@@ -207,7 +217,14 @@ Container stdio example:
   "mcpServers": {
     "kicad-mcp-pro": {
       "command": "docker",
-      "args": ["run", "--rm", "-i", "ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro:<version>"]
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "ghcr.io/oaslananka/kicad-mcp-pro:<version>",
+        "--transport",
+        "stdio"
+      ]
     }
   }
 }

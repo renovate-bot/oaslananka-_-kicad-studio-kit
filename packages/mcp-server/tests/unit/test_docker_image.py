@@ -50,6 +50,23 @@ def test_docker_image_builds_and_exposes_stdio_cli_smoke() -> None:
         )
         assert build.returncode == 0, build.stdout + build.stderr
 
+        inspect = subprocess.run(
+            [docker, "image", "inspect", tag],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=60,
+            check=False,
+        )
+        assert inspect.returncode == 0, inspect.stdout + inspect.stderr
+        config = json.loads(inspect.stdout)[0]["Config"]
+        assert config["User"] == "kicadmcp"
+        assert config["Entrypoint"] == ["kicad-mcp-pro-entrypoint"]
+        assert config["Cmd"] == ["--transport", "streamable-http"]
+        assert "3334/tcp" in config["ExposedPorts"]
+
         help_result = subprocess.run(
             [docker, "run", "--rm", tag, "--help"],
             cwd=ROOT,

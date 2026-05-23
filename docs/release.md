@@ -26,6 +26,9 @@ The publish workflows keep release evidence product-scoped:
   wheel and source distribution before PyPI trusted publishing. The `python-dist`
   artifact intentionally contains only `*.whl` and `*.tar.gz` files.
 - `publish-npm.yml` uses npm provenance for the MCP launcher package.
+- `publish-mcp-container.yml` validates the Docker image on pull requests and
+  publishes signed multi-arch GHCR images with BuildKit SBOM/provenance for
+  `mcp-server-v*` GitHub Releases.
 
 Release dry-runs also validate `compatibility.yaml` through the MCP server release preflight. Update [docs/support-matrix.md](support-matrix.md) and release notes whenever KiCad, VS Code, MCP, Node, pnpm, Python, or tool-schema support changes.
 

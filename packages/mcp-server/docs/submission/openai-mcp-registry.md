@@ -35,14 +35,14 @@ This document covers the registry publish path driven by `server.json`.
 - [ ] Confirm workflow is `release-please.yml`.
 - [ ] Confirm release environment is `release`.
 - [ ] Confirm owner is `oaslananka`.
-- [ ] Confirm repository is `kicad-mcp-pro`.
+- [ ] Confirm repository is `kicad-studio-kit`.
 - [ ] Confirm OIDC `id-token: write` remains configured for release publish.
 - [ ] Remove token-based PyPI secrets after Trusted Publishing is active.
 - [ ] Do not paste PyPI credentials into registry forms or docs.
 
 ## Container Image Verification
 
-- [ ] Image pattern: `ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro:<version>`.
+- [ ] Image pattern: `ghcr.io/oaslananka/kicad-mcp-pro:<version>`.
 - [ ] Use the version from `pyproject.toml`.
 - [ ] Verify digest before announcing a release.
 - [ ] Verify provenance before announcing a release.
@@ -53,8 +53,8 @@ This document covers the registry publish path driven by `server.json`.
 
 ```bash
 VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
-cosign verify ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro:${VERSION} \
-  --certificate-identity-regexp "https://github.com/oaslananka/kicad-studio-kit/.github/workflows/.*" \
+cosign verify ghcr.io/oaslananka/kicad-mcp-pro:${VERSION} \
+  --certificate-identity-regexp "https://github.com/oaslananka/kicad-studio-kit/.github/workflows/publish-mcp-container.yml@refs/tags/mcp-server-v.*" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
@@ -91,7 +91,7 @@ cosign verify ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro:${VERSION} \
 - [ ] Confirm registry package runtime hint is `docker` for OCI.
 - [ ] Confirm OCI identifier includes the current version tag.
 - [ ] Confirm OCI image field omits the tag where the schema expects image base.
-- [ ] Confirm GHCR image namespace is `ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro`.
+- [ ] Confirm GHCR image namespace is `ghcr.io/oaslananka/kicad-mcp-pro`.
 - [ ] Confirm old GHCR namespace values do not appear in dry-run output.
 - [ ] Confirm repository URL is the canonical GitHub URL.
 - [ ] Confirm website URL is the GitHub Pages URL.
