@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
+import { docsSiteUrl } from "./lib/docs-site-config.mjs";
 
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -317,12 +318,15 @@ function updateSupportMatrix() {
   const generated = compatibilitySummary(readYaml("compatibility.yaml"));
   let next;
   if (current.includes(markerStart) && current.includes(markerEnd)) {
-    const before = current
-      .slice(0, current.indexOf("## Generated Compatibility Summary"))
-      .trimEnd();
-    const after = current
-      .slice(current.indexOf(markerEnd) + markerEnd.length)
-      .trimStart();
+    const summaryIndex = current.indexOf("## Generated Compatibility Summary");
+    const markerEndIndex = current.indexOf(markerEnd);
+    if (summaryIndex === -1 || markerEndIndex === -1) {
+      throw new Error(
+        `${relativePath}: generated compatibility markers are present but the summary block is malformed`,
+      );
+    }
+    const before = current.slice(0, summaryIndex).trimEnd();
+    const after = current.slice(markerEndIndex + markerEnd.length).trimStart();
     next = `${before}\n\n${generated}\n\n${after}`;
   } else {
     next = current.replace(
@@ -446,7 +450,7 @@ function renderRobots() {
   return `User-agent: *
 Allow: /
 
-Sitemap: https://oaslananka.github.io/kicad-studio-kit/sitemap.xml
+Sitemap: ${new URL("sitemap.xml", docsSiteUrl).toString()}
 `;
 }
 
@@ -471,11 +475,12 @@ function renderSitemap() {
     "/contributing.html",
   ];
   const urls = pages
-    .map(
-      (page) => `  <url>
-    <loc>https://oaslananka.github.io/kicad-studio-kit${page}</loc>
-  </url>`,
-    )
+    .map((page) => {
+      const loc = new URL(page.replace(/^\//u, ""), docsSiteUrl).toString();
+      return `  <url>
+    <loc>${loc}</loc>
+  </url>`;
+    })
     .join("\n");
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

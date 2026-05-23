@@ -1,11 +1,12 @@
 import { defineConfig } from "vitepress";
+import { docsSiteBase } from "../../scripts/lib/docs-site-config.mjs";
 
 export default defineConfig({
   lang: "en-US",
   title: "KiCad Studio Kit",
   description:
     "Searchable documentation for the KiCad Studio VS Code extension and kicad-mcp-pro.",
-  base: "/kicad-studio-kit/",
+  base: docsSiteBase,
   outDir: "../site",
   lastUpdated: true,
   head: [
@@ -13,7 +14,7 @@ export default defineConfig({
       "link",
       {
         rel: "icon",
-        href: "/kicad-studio-kit/icon.png",
+        href: `${docsSiteBase}icon.png`,
         type: "image/png",
       },
     ],

@@ -5,6 +5,7 @@ import path from "node:path";
 import process from "node:process";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { docsSiteBase } from "./lib/docs-site-config.mjs";
 
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -13,6 +14,7 @@ const repoRoot = path.resolve(
 const docsRoot = path.join(repoRoot, "docs");
 const args = new Set(process.argv.slice(2));
 const checkAll = args.size === 0 || args.has("--all");
+const docsBasePrefix = docsSiteBase.replace(/\/$/u, "");
 
 function walk(dir) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -80,7 +82,7 @@ function isIgnoredUrl(target) {
 
 function extractLinks(markdown) {
   const links = [];
-  const markdownLink = /(?<!!)\[[^\]]+\]\(([^)]+)\)/gu;
+  const markdownLink = /(?<!!)\[[^\]]+\]\(([^)\s]+)(?:\s+["'][^"']+["'])?\)/gu;
   let match;
   while ((match = markdownLink.exec(markdown)) !== null) {
     links.push(match[1].trim());
@@ -95,13 +97,20 @@ function resolveTarget(filePath, target) {
     return { filePath, hash };
   }
   if (cleanTarget.startsWith("/")) {
-    const normalized = cleanTarget.replace(/^\/kicad-studio-kit/u, "");
+    const normalized = cleanTarget.replace(
+      new RegExp(`^${escapeRegExp(docsBasePrefix)}(?=/|$)`, "u"),
+      "",
+    );
     return {
       filePath: path.join(docsRoot, normalized.replace(/^\/+/u, "")),
       hash,
     };
   }
   return { filePath: path.resolve(path.dirname(filePath), cleanTarget), hash };
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
 }
 
 function candidateFiles(targetPath) {
