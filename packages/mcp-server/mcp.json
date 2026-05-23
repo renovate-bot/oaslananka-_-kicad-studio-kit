@@ -49,10 +49,10 @@
     },
     {
       "registryType": "oci",
-      "identifier": "ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro:1.0.0",
+      "identifier": "ghcr.io/oaslananka/kicad-mcp-pro:1.0.0",
       "version": "1.0.0",
       "registry": "container",
-      "image": "ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro",
+      "image": "ghcr.io/oaslananka/kicad-mcp-pro",
       "runtimeHint": "docker",
       "transport": {
         "type": "stdio"

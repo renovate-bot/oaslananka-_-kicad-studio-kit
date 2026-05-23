@@ -25,7 +25,7 @@ Use this checklist before entering any external review form.
 - [ ] Support URL is `https://github.com/oaslananka/kicad-studio-kit/issues`.
 - [ ] MCP server name is `io.github.oaslananka/kicad-mcp-pro`.
 - [ ] Package name is `kicad-mcp-pro`.
-- [ ] Container image is `ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro:<version>`.
+- [ ] Container image is `ghcr.io/oaslananka/kicad-mcp-pro:<version>`.
 - [ ] Transport for directory reviewers is `stdio`.
 
 ## Repository Evidence
@@ -75,7 +75,7 @@ Use this checklist before entering any external review form.
 - [ ] Run `uv run --all-extras python scripts/publish_mcp_registry.py --dry-run` before live publish.
 - [ ] Use `server.json` as the registry source of truth.
 - [ ] Confirm PyPI Trusted Publisher OIDC is enabled for release workflow.
-- [ ] Confirm GHCR image is available as `ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro:<version>`.
+- [ ] Confirm GHCR image is available as `ghcr.io/oaslananka/kicad-mcp-pro:<version>`.
 - [ ] Confirm release artifacts include SBOM evidence.
 - [ ] Confirm release artifacts include SHA-256 checksums.
 - [ ] Confirm release artifacts include Sigstore signatures.

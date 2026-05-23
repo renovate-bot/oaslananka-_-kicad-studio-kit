@@ -31,6 +31,7 @@ required_workflows:
   - publish-python.yml
   - publish-npm.yml
   - publish-mcp-registry.yml
+  - publish-mcp-container.yml
 governance:
   renovate:
     config: renovate.json
@@ -46,6 +47,9 @@ governance:
     pypi_workflow: publish-python.yml
     pypi_attestations: true
     pypi_long_lived_tokens_allowed: false
+    ghcr_container_publishing: true
+    ghcr_workflow: publish-mcp-container.yml
+    ghcr_image: ghcr.io/oaslananka/kicad-mcp-pro
   canonical_policy:
     document: CANONICAL.md
   reusable_workflows:

@@ -1,0 +1,22 @@
+services:
+  kicad-mcp-pro:
+    image: ${KICAD_MCP_IMAGE:-ghcr.io/oaslananka/kicad-mcp-pro:latest}
+    ports:
+      - "127.0.0.1:${KICAD_MCP_PORT:-3334}:3334"
+    environment:
+      KICAD_MCP_TRANSPORT: streamable-http
+      KICAD_MCP_HOST: 0.0.0.0
+      KICAD_MCP_AUTH_TOKEN: ${KICAD_MCP_AUTH_TOKEN:?set a 32+ character local token}
+      KICAD_MCP_PROJECT_DIR: /projects
+      KICAD_MCP_OUTPUT_DIR: /tmp/kicad-mcp-output
+      KICAD_MCP_LOG_LEVEL: INFO
+      KICAD_MCP_LOG_FORMAT: json
+    volumes:
+      - type: bind
+        source: ${KICAD_PROJECT_DIR:-../led-basic}
+        target: /projects
+        read_only: true
+      - kicad-mcp-output:/tmp/kicad-mcp-output
+
+volumes:
+  kicad-mcp-output:

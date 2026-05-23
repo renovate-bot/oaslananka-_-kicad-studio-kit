@@ -15,6 +15,8 @@ Pull requests and scheduled workflows keep the supply chain surface visible:
 - `Scorecard` publishes repository health findings through code scanning.
 - PyPI and TestPyPI publish jobs use Trusted Publishing through GitHub OIDC and
   upload registry-native attestations through `pypa/gh-action-pypi-publish`.
+- GHCR image publishing uses GitHub Container Registry, BuildKit SBOM and
+  provenance, Trivy image scanning, and keyless Sigstore `cosign` signing.
 - Release publish workflows validate package contents, emit SHA-256 checksum
   evidence, and create GitHub artifact attestations where package registries do
   not already provide provenance.

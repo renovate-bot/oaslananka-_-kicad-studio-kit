@@ -8,6 +8,7 @@ const requiredEnvironments = [
   "testpypi",
   "npm",
   "mcp-registry",
+  "ghcr",
   "release",
 ];
 const requiredSecrets = {
@@ -60,6 +61,9 @@ console.log(
 );
 console.log(
   "- MCP Registry: io.github.oaslananka/kicad-mcp-pro via GitHub OIDC",
+);
+console.log(
+  "- GHCR: image ghcr.io/oaslananka/kicad-mcp-pro via GITHUB_TOKEN, workflow publish-mcp-container.yml, environment ghcr",
 );
 console.log(
   "- Open VSX: namespace oaslananka, workflow publish-extension.yml, environment extension-marketplaces, secret OVSX_PAT",

@@ -209,6 +209,7 @@ function validateRepoHealth() {
     "publish-python.yml",
     "publish-npm.yml",
     "publish-mcp-registry.yml",
+    "publish-mcp-container.yml",
   ];
 
   requireCondition(
@@ -231,8 +232,11 @@ function validateRepoHealth() {
   requireCondition(
     health.includes("pypi_trusted_publishing: true") &&
       health.includes("pypi_attestations: true") &&
-      health.includes("pypi_long_lived_tokens_allowed: false"),
-    ".repo-health.yaml must declare the PyPI trusted publishing posture",
+      health.includes("pypi_long_lived_tokens_allowed: false") &&
+      health.includes("ghcr_container_publishing: true") &&
+      health.includes("ghcr_workflow: publish-mcp-container.yml") &&
+      health.includes("ghcr_image: ghcr.io/oaslananka/kicad-mcp-pro"),
+    ".repo-health.yaml must declare the PyPI and GHCR publishing posture",
   );
 }
 

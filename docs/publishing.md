@@ -41,6 +41,7 @@ Protocol or tool-schema changes must update compatibility metadata and release n
 - `testpypi`
 - `npm`
 - `mcp-registry`
+- `ghcr`
 - `release`
 
 ## Required Secrets
@@ -113,6 +114,15 @@ MCP Registry:
 - workflow: `publish-mcp-registry.yml`
 - auth: GitHub OIDC
 - server.json path: `packages/mcp-server/server.json`
+
+GHCR:
+
+- image: `ghcr.io/oaslananka/kicad-mcp-pro`
+- repo: `oaslananka/kicad-studio-kit`
+- workflow: `publish-mcp-container.yml`
+- environment: `ghcr`
+- auth: built-in `GITHUB_TOKEN` with `packages: write`
+- signing: keyless Sigstore `cosign` with GitHub OIDC
 
 ## Extension Dry Run
 

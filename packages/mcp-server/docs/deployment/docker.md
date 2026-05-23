@@ -2,26 +2,90 @@
 
 For install and client examples, see [Docker Install](../install/docker.md).
 
-Docker can be used for the default stdio MCP transport or for an explicitly
-enabled streamable HTTP endpoint.
+The published image is `ghcr.io/oaslananka/kicad-mcp-pro`. It is built from the
+multi-stage `packages/mcp-server/Dockerfile`, runs as a non-root user, exposes
+port `3334`, and defaults to streamable HTTP. It binds to `0.0.0.0` inside the
+container so Docker port publishing can reach the server.
 
-## Basic Flow
+## Local HTTP Service
 
 ```bash
-docker build -t kicad-mcp-pro .
-docker run --rm -i kicad-mcp-pro
-docker run --rm -p 3334:3334 \
+docker run --rm \
+  -p 127.0.0.1:3334:3334 \
   -e KICAD_MCP_AUTH_TOKEN="replace-with-strong-32-character-token" \
-  kicad-mcp-pro kicad-mcp-pro serve --transport http --host 0.0.0.0 --port 3334
+  -e KICAD_MCP_PROJECT_DIR=/projects \
+  -e KICAD_MCP_OUTPUT_DIR=/tmp/kicad-mcp-output \
+  -v "$PWD:/projects:ro" \
+  -v kicad-mcp-output:/tmp/kicad-mcp-output \
+  ghcr.io/oaslananka/kicad-mcp-pro:<version>
 ```
 
-For production-style HTTP deployments, configure authentication, keep CORS
-origins narrowly scoped, and bind only on trusted networks.
+Use `http://127.0.0.1:3334/mcp` as the MCP URL. Do not expose this container on
+a public interface without a bearer token, strict CORS origins, and a TLS
+terminating proxy or tunnel.
 
-## KiCad 10 CI Image
+## Volume Mounts
 
-The default `Dockerfile` does not bundle KiCad. This keeps the runtime small and
-lets production hosts mount their own trusted `kicad-cli`.
+- Mount KiCad projects read-only at `/projects` for analysis, DRC, ERC, and
+  export workflows.
+- Set `KICAD_MCP_PROJECT_DIR=/projects` so tools resolve relative project paths
+  inside the container.
+- Mount a writable output location such as `/tmp/kicad-mcp-output` for generated
+  manufacturing files.
+- If KiCad is installed outside the image, mount the directory containing
+  `kicad-cli` and set `KICAD_MCP_KICAD_CLI` to its in-container path.
+
+## Environment Variables
+
+| Variable                | Purpose                                                                                                          |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `KICAD_MCP_TRANSPORT`   | Defaults to `streamable-http`; set `stdio` only when overriding the Docker command for stdio clients.            |
+| `KICAD_MCP_HOST`        | Defaults to `0.0.0.0` inside Docker so published port `3334` reaches the server.                                 |
+| `KICAD_MCP_PORT`        | Defaults to `3334`.                                                                                              |
+| `KICAD_MCP_AUTH_TOKEN`  | Required when HTTP binds outside loopback. Use a 32+ character token and pass it as a bearer token from clients. |
+| `KICAD_MCP_PROJECT_DIR` | In-container project mount path, typically `/projects`.                                                          |
+| `KICAD_MCP_OUTPUT_DIR`  | Writable output directory for generated artifacts.                                                               |
+| `KICAD_MCP_KICAD_CLI`   | Optional path to `kicad-cli` if it is mounted or bundled.                                                        |
+
+## Docker Compose
+
+The repository example at `examples/mcp-docker` starts the HTTP service with a
+read-only project mount:
+
+```bash
+export KICAD_MCP_AUTH_TOKEN="replace-with-strong-32-character-token"
+docker compose -f examples/mcp-docker/docker-compose.yml up
+```
+
+Override `KICAD_PROJECT_DIR` to point at a local KiCad project.
+
+## ChatGPT Connector Recipe
+
+1. Start the container or Compose service on localhost with
+   `KICAD_MCP_AUTH_TOKEN` set.
+2. Expose the local endpoint through an HTTPS tunnel such as Cloudflare Tunnel:
+
+   ```bash
+   cloudflared tunnel --url http://127.0.0.1:3334
+   ```
+
+3. In the ChatGPT connector configuration, set the MCP URL to
+   `https://<tunnel-host>/mcp`.
+4. Configure authentication as a bearer token using the same
+   `KICAD_MCP_AUTH_TOKEN`.
+5. Keep the KiCad project mounted read-only unless the workflow intentionally
+   writes generated project files.
+
+## KiCad CLI Images
+
+The default published image keeps KiCad external. To install the Alpine
+distribution package during a local build, pass its APK package name:
+
+```bash
+docker build \
+  --build-arg KICAD_CLI_APK_PACKAGE=kicad \
+  -t kicad-mcp-pro:kicad-cli .
+```
 
 For CI jobs that need a self-contained KiCad 10 CLI, use `Dockerfile.kicad10`.
 Pass an official Linux x86_64 KiCad 10 AppImage URL from the
@@ -31,25 +95,13 @@ Pass an official Linux x86_64 KiCad 10 AppImage URL from the
 docker build \
   -f Dockerfile.kicad10 \
   --build-arg KICAD_APPIMAGE_URL="https://downloads.kicad.org/path/to/KiCad-10.x-x86_64.AppImage" \
-  -t ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro:kicad10-ci .
+  -t ghcr.io/oaslananka/kicad-mcp-pro:kicad10-ci .
 ```
 
-The `:kicad10-ci` tag is intentionally neutral. It represents the local CI image
-built for runtime validation, not a published project release version.
 The bundled KiCad 10 image binds its HTTP server to `127.0.0.1` by default so it
 remains usable for CI smoke checks without requiring a baked-in token.
 
-Then run a smoke test:
-
-```bash
-docker run --rm -v "$PWD:/project" \
-  ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro:kicad10-ci \
-  kicad-mcp-pro --help
-```
-
-GitHub Actions jobs that build this image should provide the KiCad AppImage URL
-through a repository variable or secret such as `KICAD_10_APPIMAGE_URL`.
-
-This image is intended for CI and release validation. Do not use it as a shared
-multi-tenant host unless you also configure bearer auth, strict CORS origins,
-network isolation, and read/write project volume boundaries.
+Redistributing an image with KiCad CLI included adds KiCad's upstream license
+terms to the derived image. Review the official
+[KiCad licenses](https://www.kicad.org/about/licenses/) before publishing such
+an image.

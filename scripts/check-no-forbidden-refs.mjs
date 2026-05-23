@@ -55,6 +55,13 @@ const patterns = rawPatterns.map((pattern) => [
   new RegExp(pattern, "i"),
 ]);
 
+function isAllowedHit(label, line) {
+  return (
+    label === "(?<![@.])oaslananka/kicad-mcp-pro" &&
+    line.includes("ghcr.io/oaslananka/kicad-mcp-pro")
+  );
+}
+
 function shouldSkip(file) {
   const rel = path.relative(root, file).replaceAll("\\", "/");
   const parts = rel.split("/");
@@ -85,7 +92,7 @@ for (const file of walk(root)) {
   const lines = text.split(/\r?\n/);
   lines.forEach((line, index) => {
     for (const [label, regex] of patterns) {
-      if (regex.test(line)) {
+      if (regex.test(line) && !isAllowedHit(label, line)) {
         hits.push({
           file: path.relative(root, file).replaceAll("\\", "/"),
           line: index + 1,
