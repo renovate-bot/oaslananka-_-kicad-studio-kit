@@ -1005,7 +1005,7 @@ function upsertLibraryTable(options: {
 }
 
 function escapeTableString(value: string): string {
-  return value.replace(/\\/gu, '/').replace(/"/gu, '\\"');
+  return value.replace(/\\/gu, '\\\\').replace(/"/gu, '\\"');
 }
 
 function extractZipArchive(buffer: Buffer, targetDir: string): string[] {

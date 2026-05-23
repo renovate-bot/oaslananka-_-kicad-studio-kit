@@ -168,6 +168,45 @@ describe('PcmService', () => {
     ).resolves.toEqual(installed);
   });
 
+  it('escapes KiCad library table strings when package metadata contains quotes and backslashes', async () => {
+    const root = createTempRoot();
+    const rawPackage = createRawPackage(
+      'com.example.escaped-table',
+      'Quoted "Vendor\\Name',
+      'library',
+      'symbols'
+    );
+    rawPackage['versions'] = [
+      {
+        version: '1.0.0',
+        download_url: 'https://example.com/1.0.0.zip',
+        download_sha256: crypto
+          .createHash('sha256')
+          .update(ARCHIVE_V1)
+          .digest('hex'),
+        status: 'stable',
+        kicad_version: '8.0'
+      }
+    ];
+    const repositoryUrl = writeRepositoryWithPackages(root, [rawPackage]);
+    const { service } = createPcmService({ root });
+    __setConfiguration({
+      'kicadstudio.pcm.repositoryUrls': [repositoryUrl],
+      'kicadstudio.pcm.configDir': path.join(root, 'config'),
+      'kicadstudio.pcm.thirdPartyDir': path.join(root, '3rdparty')
+    });
+
+    await service.refreshRepositories();
+    await service.installPackage('com.example.escaped-table');
+
+    const table = fs.readFileSync(
+      path.join(root, 'config', 'sym-lib-table'),
+      'utf8'
+    );
+    expect(table).toContain('Installed by KiCad Studio PCM: Quoted \\"Vendor\\\\Name');
+    expect(table).not.toContain('Vendor/Name');
+  });
+
   it('uses kicad-cli pcm install when the detected CLI supports PCM', async () => {
     const root = createTempRoot();
     const context = createExtensionContextMock();
