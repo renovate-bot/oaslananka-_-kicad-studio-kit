@@ -168,13 +168,11 @@ function prepareForAxe(html: string): string {
     /<meta\s+http-equiv=["']Content-Security-Policy["'][\s\S]*?>/giu,
     ''
   );
-  const withoutScripts = withoutCsp.replace(
-    /<script\b[\s\S]*?<\/script>/giu,
-    ''
-  );
-  const withoutExternalStyles = withoutScripts.replace(
-    /<link\b[^>]*rel=["']stylesheet["'][^>]*>/giu,
-    ''
+  const withoutScripts = removePairedElements(withoutCsp, 'script');
+  const withoutExternalStyles = removeVoidElements(
+    withoutScripts,
+    'link',
+    isStylesheetLink
   );
   return withoutExternalStyles.replace(
     /<head>/iu,
@@ -211,6 +209,89 @@ function prepareForAxe(html: string): string {
       --input: #111827;
     }
   </style>`
+  );
+}
+
+function removePairedElements(html: string, tagName: string): string {
+  const tag = tagName.toLowerCase();
+  const lower = html.toLowerCase();
+  const openNeedle = `<${tag}`;
+  const closeNeedle = `</${tag}`;
+  let output = '';
+  let cursor = 0;
+
+  while (cursor < html.length) {
+    const openStart = lower.indexOf(openNeedle, cursor);
+    if (openStart === -1) {
+      output += html.slice(cursor);
+      break;
+    }
+
+    const openEnd = lower.indexOf('>', openStart + openNeedle.length);
+    if (openEnd === -1) {
+      output += html.slice(cursor, openStart);
+      break;
+    }
+
+    const closeStart = lower.indexOf(closeNeedle, openEnd + 1);
+    if (closeStart === -1) {
+      output += html.slice(cursor, openStart);
+      break;
+    }
+
+    const closeEnd = lower.indexOf('>', closeStart + closeNeedle.length);
+    if (closeEnd === -1) {
+      output += html.slice(cursor, openStart);
+      break;
+    }
+
+    output += html.slice(cursor, openStart);
+    cursor = closeEnd + 1;
+  }
+
+  return output;
+}
+
+function removeVoidElements(
+  html: string,
+  tagName: string,
+  shouldRemove: (element: string) => boolean
+): string {
+  const tag = tagName.toLowerCase();
+  const lower = html.toLowerCase();
+  const openNeedle = `<${tag}`;
+  let output = '';
+  let cursor = 0;
+
+  while (cursor < html.length) {
+    const openStart = lower.indexOf(openNeedle, cursor);
+    if (openStart === -1) {
+      output += html.slice(cursor);
+      break;
+    }
+
+    const openEnd = lower.indexOf('>', openStart + openNeedle.length);
+    if (openEnd === -1) {
+      output += html.slice(cursor);
+      break;
+    }
+
+    const element = html.slice(openStart, openEnd + 1);
+    output += html.slice(cursor, openStart);
+    if (!shouldRemove(element)) {
+      output += element;
+    }
+    cursor = openEnd + 1;
+  }
+
+  return output;
+}
+
+function isStylesheetLink(element: string): boolean {
+  const normalized = element.toLowerCase().replace(/\s+/gu, '');
+  return (
+    normalized.includes('rel="stylesheet"') ||
+    normalized.includes("rel='stylesheet'")
   );
 }
 
