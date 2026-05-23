@@ -83,6 +83,11 @@ def test_release_metadata_is_synchronised() -> None:
 
     assert server_json["$schema"] == REGISTRY_SCHEMA
     assert server_json["version"] == version
+    assert server_json["icons"][0]["src"].endswith("/assets/icon-512.png")
+    assert server_json["_meta"]["io.github.oaslananka/kicad-mcp-pro"]["license"] == "MIT"
+    assert server_json["_meta"]["io.github.oaslananka/kicad-mcp-pro"]["toolCatalog"][
+        "reference"
+    ].endswith("/packages/mcp-server/docs/tools-reference.generated.md")
     assert server_json["packages"][0]["version"] == version
     server_oci = next(
         package for package in server_json["packages"] if package["registryType"] == "oci"

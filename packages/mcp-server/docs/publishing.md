@@ -85,14 +85,17 @@ uv run python scripts/sync_mcp_metadata.py --check
 uv run python scripts/validate_mcp_manifest.py
 ```
 
-Publishing is handled by `.github/workflows/mcp-registry.yml`. The workflow
-validates metadata on pull requests and relevant pushes. Real publishing is
-manual only, requires `publish=true`, uses the protected `release` environment,
-and requires `MCP_REGISTRY_TOKEN` when a token-backed target is configured.
+Publishing is handled by `.github/workflows/publish-mcp-registry.yml`. The
+workflow validates metadata and runs the registry adapter in dry-run mode on
+pull requests that touch the MCP server, npm wrapper, or registry workflow
+configuration. Real publishing runs only for published GitHub Releases or a
+manual workflow dispatch with `dry_run=false`, and uses the protected
+`mcp-registry` environment.
 
 If an official target is selected, the workflow uses `mcp-publisher` with
-GitHub OIDC. If a generic or third-party target is selected without a configured
-URL, the adapter fails fast instead of pretending to publish.
+GitHub OIDC. No long-lived token is required for the official target. If a
+generic or third-party target is selected without a configured URL, the adapter
+fails fast instead of pretending to publish.
 
 ## Homebrew
 
@@ -145,18 +148,17 @@ the package must be configured in npm before a guarded workflow is added.
 
 Required GitHub environment:
 
-- `release`
+- `mcp-registry`
 
 Required GitHub secrets:
 
-- `MCP_REGISTRY_TOKEN`
 - `PACKAGE_MANAGER_TOKEN`
 - `NPM_TOKEN` only if npm trusted publishing is not used for a future wrapper
   publish workflow
 
 Required GitHub variables:
 
-- `MCP_REGISTRY_URL`
+- `MCP_REGISTRY_URL` only for generic or third-party registry adapters
 
 ## Install Examples
 

@@ -10,12 +10,57 @@ import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
+
+import jsonschema
 
 ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = ROOT.parents[1]
 DEFAULT_MANIFEST = ROOT / "mcp.json"
+SERVER_SCHEMA = ROOT / "scripts" / "schemas" / "server.schema.json"
 SUPPORTED_TRANSPORTS = frozenset({"stdio", "streamable-http", "sse"})
 NAME_RE = re.compile(r"^[a-zA-Z0-9.-]+/[a-zA-Z0-9._-]+$")
+REGISTRY_META_KEY = "io.github.oaslananka/kicad-mcp-pro"
+REPOSITORY = "https://github.com/oaslananka/kicad-studio-kit"
+WEBSITE = "https://oaslananka.github.io/kicad-studio-kit"
+VALID_SPDX_LICENSES = frozenset(
+    {
+        "MIT",
+        "Apache-2.0",
+        "BSD-2-Clause",
+        "BSD-3-Clause",
+        "ISC",
+        "MPL-2.0",
+        "GPL-3.0-only",
+        "LGPL-3.0-only",
+    }
+)
+SERVER_INFO_CAPABILITIES = [
+    "fileBackedDrc",
+    "fileBackedErc",
+    "fileBackedExports",
+    "livePcbRead",
+    "livePcbWrite",
+    "liveSchematicRead",
+    "liveSchematicWrite",
+    "chatgptConnectorCompatible",
+    "cliExports",
+]
+REQUIRED_META_FIELDS = (
+    "longDescription",
+    "categories",
+    "tags",
+    "screenshots",
+    "toolCatalog",
+    "prerequisites",
+    "supportedMcpProtocolVersions",
+    "maintainer",
+    "canonicalRepository",
+    "license",
+    "changelog",
+    "releaseNotes",
+    "serverInfo",
+)
 
 
 class ManifestValidationError(ValueError):
@@ -44,6 +89,27 @@ def _url_errors(field: str, value: object) -> list[str]:
     return []
 
 
+def _schema_path(path: Sequence[object]) -> str:
+    if not path:
+        return "<root>"
+    return ".".join(str(part) for part in path)
+
+
+def _official_schema_errors(manifest: Mapping[str, Any]) -> list[str]:
+    try:
+        schema = json.loads(SERVER_SCHEMA.read_text(encoding="utf-8"))
+        validator_cls = jsonschema.validators.validator_for(schema)
+        validator_cls.check_schema(schema)
+        validator = validator_cls(schema, format_checker=jsonschema.FormatChecker())
+        errors = sorted(validator.iter_errors(manifest), key=lambda error: list(error.path))
+    except (OSError, json.JSONDecodeError, jsonschema.SchemaError) as exc:
+        return [f"official MCP Registry schema could not be loaded: {exc}"]
+    return [
+        f"official MCP Registry schema {_schema_path(error.path)}: {error.message}"
+        for error in errors
+    ]
+
+
 def _repository_url(manifest: Mapping[str, Any]) -> object:
     repository = manifest.get("repository")
     if isinstance(repository, str):
@@ -51,6 +117,41 @@ def _repository_url(manifest: Mapping[str, Any]) -> object:
     if _is_object(repository):
         return repository.get("url")
     return None
+
+
+def _local_path_for_url(url: str) -> Path | None:
+    github_blob = f"{REPOSITORY}/blob/main/"
+    github_tree = f"{REPOSITORY}/tree/main/"
+    if url.startswith(github_blob):
+        return REPO_ROOT / unquote(url[len(github_blob) :])
+    if url.startswith(github_tree):
+        return REPO_ROOT / unquote(url[len(github_tree) :])
+    if url.startswith(f"{WEBSITE}/"):
+        return ROOT / "docs" / unquote(url[len(WEBSITE) + 1 :])
+    return None
+
+
+def _link_errors(field: str, value: object) -> list[str]:
+    errors = _url_errors(field, value)
+    if errors:
+        return errors
+
+    url = _string(value)
+    local_path = _local_path_for_url(url)
+    if local_path is None or local_path.exists():
+        return []
+
+    link_type = "repository" if url.startswith(REPOSITORY) else "website"
+    rel = local_path.relative_to(REPO_ROOT) if local_path.is_relative_to(REPO_ROOT) else local_path
+    return [f"{field} broken {link_type} link: {url} -> {rel} does not exist."]
+
+
+def _list_of_strings(value: object) -> bool:
+    return (
+        isinstance(value, list)
+        and bool(value)
+        and all(isinstance(item, str) and item for item in value)
+    )
 
 
 def _transport_type(package: Mapping[str, Any]) -> str:
@@ -102,7 +203,113 @@ def _has_command(manifest: Mapping[str, Any], packages: Sequence[Mapping[str, An
     mcp = manifest.get("mcp")
     if _is_object(mcp) and _string(mcp.get("command")):
         return True
-    return any(_string(package.get("command")) or _string(package.get("runtimeHint")) for package in packages)
+    return any(
+        _string(package.get("command")) or _string(package.get("runtimeHint"))
+        for package in packages
+    )
+
+
+def _registry_metadata_errors(manifest: Mapping[str, Any]) -> list[str]:
+    errors: list[str] = []
+
+    icons = manifest.get("icons")
+    if not isinstance(icons, list) or not icons:
+        errors.append("icons must include at least one public registry icon.")
+    else:
+        for index, icon in enumerate(icons):
+            if not _is_object(icon):
+                errors.append(f"icons[{index}] must be an object.")
+                continue
+            errors.extend(_link_errors(f"icons[{index}].src", icon.get("src")))
+
+    meta_root = manifest.get("_meta")
+    if not _is_object(meta_root) or not _is_object(meta_root.get(REGISTRY_META_KEY)):
+        errors.append(
+            f"_meta.{REGISTRY_META_KEY} is required for public registry listing metadata."
+        )
+        return errors
+
+    meta = meta_root[REGISTRY_META_KEY]
+    for field in REQUIRED_META_FIELDS:
+        if field not in meta:
+            errors.append(f"_meta.{REGISTRY_META_KEY}.{field} is required.")
+
+    if not _string(meta.get("longDescription")):
+        errors.append(f"_meta.{REGISTRY_META_KEY}.longDescription must be a non-empty string.")
+    if not _list_of_strings(meta.get("categories")):
+        errors.append(f"_meta.{REGISTRY_META_KEY}.categories must be a non-empty string list.")
+    if not _list_of_strings(meta.get("tags")):
+        errors.append(f"_meta.{REGISTRY_META_KEY}.tags must be a non-empty string list.")
+    if not _list_of_strings(meta.get("prerequisites")):
+        errors.append(f"_meta.{REGISTRY_META_KEY}.prerequisites must be a non-empty string list.")
+    if not _list_of_strings(meta.get("supportedMcpProtocolVersions")):
+        errors.append(
+            f"_meta.{REGISTRY_META_KEY}.supportedMcpProtocolVersions must be a "
+            "non-empty string list."
+        )
+
+    screenshots = meta.get("screenshots")
+    if not isinstance(screenshots, list) or not screenshots:
+        errors.append(f"_meta.{REGISTRY_META_KEY}.screenshots must be a non-empty list.")
+    else:
+        for index, screenshot in enumerate(screenshots):
+            if not _is_object(screenshot):
+                errors.append(f"_meta.{REGISTRY_META_KEY}.screenshots[{index}] must be an object.")
+                continue
+            if not _string(screenshot.get("caption")):
+                errors.append(
+                    f"_meta.{REGISTRY_META_KEY}.screenshots[{index}].caption "
+                    "must be a non-empty string."
+                )
+            errors.extend(
+                _link_errors(
+                    f"_meta.{REGISTRY_META_KEY}.screenshots[{index}].src", screenshot.get("src")
+                )
+            )
+
+    tool_catalog = meta.get("toolCatalog")
+    if not _is_object(tool_catalog):
+        errors.append(f"_meta.{REGISTRY_META_KEY}.toolCatalog must be an object.")
+    else:
+        if not _string(tool_catalog.get("summary")):
+            errors.append(f"_meta.{REGISTRY_META_KEY}.toolCatalog.summary is required.")
+        errors.extend(
+            _link_errors(
+                f"_meta.{REGISTRY_META_KEY}.toolCatalog.reference", tool_catalog.get("reference")
+            )
+        )
+
+    maintainer = meta.get("maintainer")
+    if not _is_object(maintainer):
+        errors.append(f"_meta.{REGISTRY_META_KEY}.maintainer must be an object.")
+    else:
+        if not _string(maintainer.get("name")):
+            errors.append(f"_meta.{REGISTRY_META_KEY}.maintainer.name is required.")
+        errors.extend(
+            _link_errors(f"_meta.{REGISTRY_META_KEY}.maintainer.url", maintainer.get("url"))
+        )
+
+    for field in ("canonicalRepository", "changelog", "releaseNotes"):
+        errors.extend(_link_errors(f"_meta.{REGISTRY_META_KEY}.{field}", meta.get(field)))
+
+    meta_license = _string(meta.get("license"))
+    if meta_license != _string(manifest.get("license")):
+        errors.append(f"_meta.{REGISTRY_META_KEY}.license must match license.")
+
+    server_info = meta.get("serverInfo")
+    if not _is_object(server_info):
+        errors.append(f"_meta.{REGISTRY_META_KEY}.serverInfo must be an object.")
+    else:
+        if server_info.get("capabilities") != SERVER_INFO_CAPABILITIES:
+            errors.append(
+                f"_meta.{REGISTRY_META_KEY}.serverInfo.capabilities must match "
+                "the server-info contract."
+            )
+        for field in ("schemaVersion", "mcpProtocolVersion", "toolSchemaVersion"):
+            if not _string(server_info.get(field)):
+                errors.append(f"_meta.{REGISTRY_META_KEY}.serverInfo.{field} is required.")
+
+    return errors
 
 
 def load_manifest(path: Path = DEFAULT_MANIFEST) -> dict[str, Any]:
@@ -116,10 +323,13 @@ def load_manifest(path: Path = DEFAULT_MANIFEST) -> dict[str, Any]:
 def validate_manifest(manifest: Mapping[str, Any]) -> list[str]:
     """Return validation errors for an MCP manifest."""
     errors: list[str] = []
+    errors.extend(_official_schema_errors(manifest))
 
     for field in ("name", "description", "version", "license"):
         if not _string(manifest.get(field)):
             errors.append(f"{field} is required.")
+    if _string(manifest.get("license")) and manifest.get("license") not in VALID_SPDX_LICENSES:
+        errors.append("license must be a valid SPDX license identifier.")
 
     name = _string(manifest.get("name"))
     if name and NAME_RE.fullmatch(name) is None:
@@ -183,6 +393,8 @@ def validate_manifest(manifest: Mapping[str, Any]) -> list[str]:
             for transport in transports:
                 if transport not in SUPPORTED_TRANSPORTS:
                     errors.append(f"mcp.transports contains unsupported transport {transport!r}.")
+
+    errors.extend(_registry_metadata_errors(manifest))
 
     return errors
 

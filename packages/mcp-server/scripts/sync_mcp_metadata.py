@@ -20,6 +20,46 @@ MCP_SERVER_NAME = "io.github.oaslananka/kicad-mcp-pro"
 REPOSITORY = "https://github.com/oaslananka/kicad-studio-kit"
 WEBSITE = "https://oaslananka.github.io/kicad-studio-kit"
 GHCR_IMAGE = "ghcr.io/oaslananka/kicad-studio-kit/kicad-mcp-pro"
+REGISTRY_META_KEY = "io.github.oaslananka/kicad-mcp-pro"
+CANONICAL_PACKAGE_URL = f"{REPOSITORY}/tree/main/packages/mcp-server"
+CHANGELOG_URL = f"{REPOSITORY}/blob/main/packages/mcp-server/CHANGELOG.md"
+TOOLS_REFERENCE_URL = (
+    f"{REPOSITORY}/blob/main/packages/mcp-server/docs/tools-reference.generated.md"
+)
+MCP_PROTOCOL_VERSION = "2025-11-25"
+SERVER_INFO_SCHEMA_VERSION = "1.1.0"
+TOOL_SCHEMA_VERSION = "1.0.0"
+SERVER_INFO_CAPABILITIES = [
+    "fileBackedDrc",
+    "fileBackedErc",
+    "fileBackedExports",
+    "livePcbRead",
+    "livePcbWrite",
+    "liveSchematicRead",
+    "liveSchematicWrite",
+    "chatgptConnectorCompatible",
+    "cliExports",
+]
+REGISTRY_TAGS = [
+    "kicad",
+    "pcb",
+    "schematic",
+    "drc",
+    "erc",
+    "bom",
+    "netlist",
+    "gerber",
+    "manufacturing",
+    "eda",
+    "mcp",
+]
+SCREENSHOTS = [
+    ("01-claude-desktop-quality-gate.png", "Claude Desktop quality gate workflow"),
+    ("02-cursor-schematic-build.png", "Cursor schematic automation workflow"),
+    ("03-vscode-pcb-inspection.png", "VS Code PCB inspection workflow"),
+    ("04-tools-reference.png", "Generated MCP tools reference"),
+    ("05-export-manufacturing.png", "Manufacturing export automation"),
+]
 
 
 def _license_text(project: dict[str, Any]) -> str:
@@ -65,6 +105,18 @@ def _registry_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
             "subfolder": "packages/mcp-server",
         },
         "websiteUrl": WEBSITE,
+        "icons": [
+            {
+                "src": f"{WEBSITE}/assets/icon-512.png",
+                "mimeType": "image/png",
+                "sizes": ["512x512"],
+            },
+            {
+                "src": f"{WEBSITE}/assets/icon.svg",
+                "mimeType": "image/svg+xml",
+                "sizes": ["any"],
+            },
+        ],
         "packages": [
             {
                 "registryType": "pypi",
@@ -98,6 +150,58 @@ def _registry_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
             "prompts": True,
         },
         "license": metadata["license"],
+        "_meta": {
+            REGISTRY_META_KEY: {
+                "longDescription": (
+                    "KiCad MCP Pro connects MCP clients to production KiCad EDA workflows. "
+                    "It exposes project setup, schematic analysis, PCB inspection, DRC/ERC "
+                    "validation, BOM/netlist generation, routing review, simulation, DFM, "
+                    "and manufacturing export tools. KiCad CLI must be installed for "
+                    "file-backed validation and export operations; live editing capabilities "
+                    "depend on the KiCad IPC runtime available in KiCad 9 and newer."
+                ),
+                "categories": [
+                    "developer-tools",
+                    "electronic-design-automation",
+                    "manufacturing",
+                ],
+                "tags": REGISTRY_TAGS,
+                "screenshots": [
+                    {
+                        "src": f"{WEBSITE}/assets/screenshots/{filename}",
+                        "caption": caption,
+                    }
+                    for filename, caption in SCREENSHOTS
+                ],
+                "toolCatalog": {
+                    "summary": (
+                        "EDA automation tools for KiCad project setup, schematic analysis, "
+                        "PCB inspection, DRC/ERC validation, BOM/netlist generation, "
+                        "routing review, simulation, DFM, and manufacturing export."
+                    ),
+                    "reference": TOOLS_REFERENCE_URL,
+                },
+                "prerequisites": [
+                    "KiCad CLI 8.x, 9.x, or 10.x available on PATH for file-backed DRC, "
+                    "ERC, and export tools."
+                ],
+                "supportedMcpProtocolVersions": [MCP_PROTOCOL_VERSION],
+                "maintainer": {
+                    "name": "Osman Aslan",
+                    "url": "https://github.com/oaslananka",
+                },
+                "canonicalRepository": CANONICAL_PACKAGE_URL,
+                "license": metadata["license"],
+                "changelog": CHANGELOG_URL,
+                "releaseNotes": CHANGELOG_URL,
+                "serverInfo": {
+                    "schemaVersion": SERVER_INFO_SCHEMA_VERSION,
+                    "mcpProtocolVersion": MCP_PROTOCOL_VERSION,
+                    "toolSchemaVersion": TOOL_SCHEMA_VERSION,
+                    "capabilities": SERVER_INFO_CAPABILITIES,
+                },
+            }
+        },
     }
 
 
@@ -115,7 +219,9 @@ def _updated_init(metadata: dict[str, Any], original: str) -> str:
     return "\n".join(rendered) + "\n"
 
 
-def _updated_npm_wrapper_package(metadata: dict[str, Any], original: dict[str, Any]) -> dict[str, Any]:
+def _updated_npm_wrapper_package(
+    metadata: dict[str, Any], original: dict[str, Any]
+) -> dict[str, Any]:
     updated = deepcopy(original)
     updated["version"] = metadata["version"]
     updated["homepage"] = WEBSITE
@@ -162,7 +268,10 @@ def main(argv: list[str] | None = None) -> int:
                 path.write_text(rendered, encoding="utf-8")
 
     if drift and args.check:
-        rel = ", ".join(str(path.relative_to(ROOT)) if path.is_relative_to(ROOT) else str(path) for path in drift)
+        rel = ", ".join(
+            str(path.relative_to(ROOT)) if path.is_relative_to(ROOT) else str(path)
+            for path in drift
+        )
         print(f"MCP metadata is out of sync: {rel}", file=sys.stderr)
         print("Run: pnpm run metadata:sync", file=sys.stderr)
         return 1
