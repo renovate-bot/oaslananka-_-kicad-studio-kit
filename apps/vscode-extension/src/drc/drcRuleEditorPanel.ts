@@ -104,13 +104,19 @@ export class DrcRuleEditorPanel {
   }
 
   private renderHtml(_context: vscode.ExtensionContext): string {
-    const nonce = createNonce();
-    return injectWebviewLocalization(
-      `<!DOCTYPE html>
+    return buildDrcRuleEditorHtml();
+  }
+}
+
+export function buildDrcRuleEditorHtml(): string {
+  const nonce = createNonce();
+  return injectWebviewLocalization(
+    `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'nonce-${nonce}'; script-src 'nonce-${nonce}';">
+  <title>KiCad DRC Rule Editor</title>
   <style nonce="${nonce}">
     body { margin: 0; padding: 18px; color: var(--vscode-foreground); background: var(--vscode-editor-background); font-family: var(--vscode-font-family); }
     form { display: grid; gap: 12px; max-width: 720px; }
@@ -150,9 +156,8 @@ export class DrcRuleEditorPanel {
   </script>
 </body>
 </html>`,
-      nonce
-    );
-  }
+    nonce
+  );
 }
 
 async function showDrcRuleEditorError(
