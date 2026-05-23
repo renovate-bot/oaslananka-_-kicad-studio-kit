@@ -632,6 +632,11 @@ def test_release_and_publish_workflows_are_monorepo_ready() -> None:
     assert "mcp-publisher login github-oidc" in publish_mcp
     assert "MCP_PUBLISHER_VERSION: v1.7.9" in publish_mcp
     assert "releases/latest" not in publish_mcp
+    assert "pull_request:" in publish_mcp
+    assert "apps/kicad-mcp-pro/**" in publish_mcp
+    assert "packages/mcp-server/**" in publish_mcp
+    assert "corepack pnpm --dir packages/mcp-server run publish:mcp:dry-run" in publish_mcp
+    assert "if: github.event_name == 'release' ||" in publish_mcp
 
 
 def test_security_and_publish_workflows_emit_supply_chain_evidence() -> None:

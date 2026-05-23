@@ -28,6 +28,12 @@ def _load_publisher() -> object:
     return module
 
 
+def test_publish_adapter_defaults_to_official_server_manifest() -> None:
+    module = _load_publisher()
+
+    assert module.DEFAULT_MANIFEST == ROOT / "server.json"
+
+
 def test_publish_adapter_dry_run_success(monkeypatch) -> None:
     module = _load_publisher()
     monkeypatch.setenv("MCP_REGISTRY_TARGET", "generic")

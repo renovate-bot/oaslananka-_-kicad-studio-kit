@@ -18,7 +18,7 @@ from urllib.request import Request, urlopen
 from validate_mcp_manifest import ManifestValidationError, validate_manifest_file
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_MANIFEST = ROOT / "mcp.json"
+DEFAULT_MANIFEST = ROOT / "server.json"
 SUPPORTED_TARGETS = frozenset({"official", "generic", "smithery", "glama", "pulsemcp"})
 NOT_CONFIGURED = (
     "MCP registry publish API is not configured; set MCP_REGISTRY_URL or implement target adapter."
