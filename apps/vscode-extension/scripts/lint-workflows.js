@@ -24,7 +24,6 @@ main().catch((error) => {
 });
 
 async function main() {
-  const lint = await createLinter();
   const files = fs
     .readdirSync(workflowsDir)
     .filter((file) => file.endsWith('.yml') || file.endsWith('.yaml'))
@@ -32,6 +31,7 @@ async function main() {
 
   const results = [];
   for (const file of files) {
+    const lint = await createLinter();
     const fullPath = path.join(workflowsDir, file);
     const input = fs.readFileSync(fullPath, 'utf8');
     results.push(

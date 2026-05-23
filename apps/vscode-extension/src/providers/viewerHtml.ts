@@ -1537,6 +1537,7 @@ export function createViewerErrorHtml(
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'nonce-${nonce}' ${escapeAttr(cspSource)};">
+  <title>${escapeHtml(title)}</title>
   <style nonce="${nonce}">
     body  { margin: 0; padding: 24px; background: #0f172a; color: #e2e8f0; font: 13px/1.6 "Segoe UI", sans-serif; }
     .card { max-width: 860px; margin: 0 auto; padding: 22px; border-radius: 16px; background: #111827; border: 1px solid rgba(148,163,184,.22); }
