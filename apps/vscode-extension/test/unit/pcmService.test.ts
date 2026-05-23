@@ -4,12 +4,16 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import * as vscode from 'vscode';
+import { COMMANDS } from '../../src/constants';
 import {
   PcmInstalledPackage,
   PcmPackage,
   PcmService
 } from '../../src/library/pcmService';
-import { PcmLibraryProvider } from '../../src/library/pcmLibraryProvider';
+import {
+  PcmLibraryProvider,
+  unwrapPcmPackage
+} from '../../src/library/pcmLibraryProvider';
 import { zipDirectory } from '../../src/utils/zipUtils';
 import {
   __setConfiguration,
@@ -772,15 +776,47 @@ describe('PcmService', () => {
     const update = createProviderPackage('Updated Plugin', 'update-available', [
       'plugins'
     ]);
+    const footprint = createProviderPackage('Available Footprint', 'available', [
+      'footprints'
+    ]);
+    const model = createProviderPackage('Available Model', 'available', [
+      '3d-models'
+    ]);
+    const zedSymbols = createProviderPackage('Zed Symbols', 'available', [
+      'symbols'
+    ]);
+    const noVersion = createProviderPackage('No Version', 'available', []);
+    noVersion.latestVersion = undefined;
+    noVersion.metadata.type = 'plugin';
+    noVersion.metadata.description = '';
+    const changeListeners: Array<() => void> = [];
     const provider = new PcmLibraryProvider({
-      onDidChange: jest.fn(() => ({ dispose: jest.fn() })),
+      onDidChange: jest.fn((listener: () => void) => {
+        changeListeners.push(listener);
+        return { dispose: jest.fn() };
+      }),
       refreshRepositories: jest.fn().mockResolvedValue([
         available,
         installed,
-        update
+        update,
+        footprint,
+        model,
+        zedSymbols,
+        noVersion
       ]),
-      getPackages: jest.fn().mockReturnValue([available, installed, update])
+      getPackages: jest
+        .fn()
+        .mockReturnValue([
+          available,
+          installed,
+          update,
+          footprint,
+          model,
+          zedSymbols,
+          noVersion
+        ])
     } as never);
+    const fireSpy = jest.spyOn((provider as any).onDidChangeTreeDataEmitter, 'fire');
 
     const root = await provider.getChildren();
     const pluginGroup = root.find((node) => (node as any).kind === 'plugins');
@@ -806,6 +842,34 @@ describe('PcmService', () => {
     expect(availableItem.contextValue).toBe('pcmPackageAvailable');
     expect(installedItem.contextValue).toBe('pcmPackageInstalled');
     expect(updateItem.contextValue).toBe('pcmPackageUpdate');
+    const noVersionItem = provider.getTreeItem({
+      type: 'package',
+      pkg: noVersion
+    } as never);
+    expect(noVersionItem.description).toBe('Available no version');
+    expect(noVersionItem.tooltip).toContain('Type: plugin');
+    expect(noVersionItem.command).toEqual(
+      expect.objectContaining({ command: COMMANDS.installPcmPackage })
+    );
+    expect(
+      (
+        provider.getTreeItem({ type: 'package', pkg: footprint } as never)
+          .iconPath as vscode.ThemeIcon
+      ).id
+    ).toBe('circuit-board');
+    expect(
+      (
+        provider.getTreeItem({ type: 'package', pkg: model } as never)
+          .iconPath as vscode.ThemeIcon
+      ).id
+    ).toBe('symbol-structure');
+    provider.setFilter('symbols');
+    const sortedSymbols = await provider.getChildren();
+    expect(sortedSymbols.map((node) => (node as any).pkg.metadata.name)).toEqual([
+      'Available Symbols',
+      'Zed Symbols'
+    ]);
+    provider.setFilter('all');
 
     (window.showQuickPick as jest.Mock).mockResolvedValueOnce(undefined);
     await provider.pickFilter();
@@ -819,6 +883,12 @@ describe('PcmService', () => {
     expect(provider.getFilter()).toBe('plugins');
 
     expect(provider.getTreeItem(root[0]!).contextValue).toMatch(/^pcmGroup/u);
+    expect(unwrapPcmPackage({ type: 'package', pkg: available })).toBe(available);
+    expect(unwrapPcmPackage(installed)).toBe(installed);
+    expect(unwrapPcmPackage({ type: 'group' })).toBeUndefined();
+    expect(unwrapPcmPackage(undefined)).toBeUndefined();
+    changeListeners[0]?.();
+    expect(fireSpy).toHaveBeenCalled();
     provider.dispose();
   });
 });
