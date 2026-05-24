@@ -42,7 +42,7 @@
   "kicadstudio.contributes.viewsWelcome.15.contents": "kicad-mcp-pro is connected via VS Code stdio.\n\nQuality Gates require the HTTP transport (port 27185).\n[Switch to HTTP Mode](command:kicadstudio.mcp.launchHttp)",
   "kicadstudio.contributes.viewsWelcome.16.contents": "No `.kicad_dru` rule file found in the active project.\n\n[Create .kicad_dru](command:kicadstudio.drcRule.createDefault)\n[Import starter template](command:kicadstudio.drcRule.importTemplate)\n[Add DRC Rule with AI](command:kicadstudio.drcRule.addWithMcp)\n[Open KiCad design rules docs](command:kicadstudio.qualityGate.openDocs)",
   "kicadstudio.contributes.viewsWelcome.17.contents": "Open a KiCad project to manage custom DRC rules.\n[Open Folder](command:workbench.action.files.openFolder)",
-  "kicadstudio.contributes.viewsWelcome.18.contents": "Search for components by part number, keyword, or footprint across local KiCad libraries, LCSC, and Octopart/Nexar.\n[Search Component](command:kicadstudio.searchComponent)\n\nStore your Octopart/Nexar API key to enable cloud search:\n[Set Octopart/Nexar API Key](command:kicadstudio.setOctopartApiKey)\n\nConfigure AI provider keys for AI-assisted matching:\n[Set AI API Key](command:kicadstudio.setAiApiKey)",
+  "kicadstudio.contributes.viewsWelcome.18.contents": "Search components inline from this view. Provider setup appears only when a missing key or disabled source needs attention.",
   "kicadstudio.contributes.commands.0.title": "KiCad: Open as Schematic Viewer",
   "kicadstudio.contributes.commands.0.category": "KiCad",
   "kicadstudio.contributes.commands.1.title": "KiCad: Open as PCB Viewer",

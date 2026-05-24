@@ -1,8 +1,15 @@
 import * as vscode from 'vscode';
-import { ComponentSearchService } from '../../src/components/componentSearch';
+import {
+  buildComponentSearchViewHtml,
+  ComponentSearchService
+} from '../../src/components/componentSearch';
 import { ComponentSearchCache } from '../../src/components/componentSearchCache';
 import { openDatasheet } from '../../src/components/datasheetOpener';
-import { COMMANDS } from '../../src/constants';
+import {
+  AI_SECRET_KEYS,
+  COMMANDS,
+  OCTOPART_SECRET_KEY
+} from '../../src/constants';
 import { __setConfiguration, createExtensionContextMock } from './vscodeMock';
 
 function createPanelMock() {
@@ -32,9 +39,45 @@ function createPanelMock() {
   };
 }
 
+function createWebviewViewMock() {
+  let messageHandler: ((message: unknown) => Promise<void> | void) | undefined;
+  let disposeHandler: (() => void) | undefined;
+  const webview = {
+    cspSource: 'vscode-resource:',
+    html: '',
+    options: {},
+    onDidReceiveMessage: jest.fn(
+      (callback: (message: unknown) => Promise<void> | void) => {
+        messageHandler = callback;
+        return { dispose: jest.fn() };
+      }
+    )
+  };
+  return {
+    view: {
+      webview,
+      title: '',
+      description: '',
+      visible: true,
+      onDidDispose: jest.fn((callback: () => void) => {
+        disposeHandler = callback;
+        return { dispose: jest.fn() };
+      }),
+      onDidChangeVisibility: jest.fn(() => ({ dispose: jest.fn() })),
+      show: jest.fn()
+    },
+    send: async (message: unknown) => {
+      await messageHandler?.(message);
+    },
+    dispose: () => disposeHandler?.()
+  };
+}
+
 describe('ComponentSearchCache', () => {
   beforeEach(() => {
     jest.restoreAllMocks();
+    jest.clearAllMocks();
+    __setConfiguration({});
   });
 
   it('caches Octopart results for TTL duration', async () => {
@@ -576,9 +619,7 @@ describe('ComponentSearchCache', () => {
       undefined,
       {
         getPackages: jest.fn().mockReturnValue([pcmPackage]),
-        findInstallCandidateForResult: jest
-          .fn()
-          .mockResolvedValue(pcmPackage),
+        findInstallCandidateForResult: jest.fn().mockResolvedValue(pcmPackage),
         findPackages: jest.fn().mockResolvedValue([])
       } as never
     );
@@ -605,5 +646,351 @@ describe('ComponentSearchCache', () => {
       COMMANDS.installPcmPackage,
       pcmPackage
     );
+  });
+
+  it('renders the inline Component Search view with provider chips and result metadata', () => {
+    const html = buildComponentSearchViewHtml({
+      nonce: 'nonce',
+      cspSource: 'vscode-resource:',
+      query: 'STM32F411 LQFP48',
+      loading: false,
+      providers: [
+        {
+          id: 'local',
+          label: 'Local KiCad libraries',
+          status: 'ready',
+          detail: 'Indexed'
+        },
+        {
+          id: 'lcsc',
+          label: 'LCSC',
+          status: 'ready',
+          detail: 'Enabled'
+        },
+        {
+          id: 'octopart',
+          label: 'Octopart/Nexar',
+          status: 'warning',
+          detail: 'API key needed'
+        },
+        {
+          id: 'ai',
+          label: 'AI matching',
+          status: 'warning',
+          detail: 'API key needed'
+        }
+      ],
+      warnings: [
+        'Octopart/Nexar API key is missing; LCSC and local library searches still work.'
+      ],
+      recentSearches: ['10uF 0603', 'USB-C connector'],
+      recommendations: [
+        {
+          label: 'Recommended for U1',
+          query: 'STM32F411 LQFP48'
+        }
+      ],
+      results: [
+        {
+          result: {
+            source: 'octopart',
+            mpn: 'STM32F411CEU6',
+            manufacturer: 'ST',
+            description: 'Arm Cortex-M4 MCU',
+            datasheetUrl: 'https://example.com/stm32.pdf',
+            offers: [
+              {
+                seller: 'Digi-Key',
+                inventoryLevel: 1250,
+                prices: []
+              }
+            ],
+            specs: [{ name: 'Footprint', value: 'LQFP48' }]
+          },
+          availability: '1,250 in stock',
+          footprintMatch: 'LQFP48',
+          datasheet: 'Available',
+          confidence: 'High'
+        }
+      ]
+    });
+
+    expect(html).toContain('type="search"');
+    expect(html).toContain('data-provider-id="local"');
+    expect(html).toContain('Local KiCad libraries');
+    expect(html).toContain('Octopart/Nexar API key is missing');
+    expect(html).toContain('10uF 0603');
+    expect(html).toContain('Recommended for U1');
+    expect(html).toContain('STM32F411CEU6');
+    expect(html).toContain('Availability');
+    expect(html).toContain('1,250 in stock');
+    expect(html).toContain('Footprint match');
+    expect(html).toContain('LQFP48');
+    expect(html).toContain('Datasheet');
+    expect(html).toContain('Available');
+    expect(html).toContain('Confidence');
+    expect(html).toContain('High');
+    expect(html).toContain('Set Octopart/Nexar API Key');
+  });
+
+  it('runs inline searches without quick picks and keeps missing API keys non-blocking', async () => {
+    __setConfiguration({
+      'kicadstudio.componentSearch.enableLCSC': true
+    });
+    const context = createExtensionContextMock();
+    const cache = new ComponentSearchCache(
+      context.globalState as unknown as vscode.Memento
+    );
+    const octopart = { search: jest.fn() };
+    const lcsc = {
+      search: jest.fn().mockResolvedValue([
+        {
+          source: 'lcsc',
+          mpn: 'C25804',
+          manufacturer: 'Yageo',
+          description: '10uF ceramic capacitor',
+          lcscPartNumber: 'C25804',
+          datasheetUrl: 'https://example.com/c25804.pdf',
+          offers: [
+            {
+              seller: 'LCSC',
+              inventoryLevel: 42,
+              prices: []
+            }
+          ],
+          specs: [{ name: 'Footprint', value: '0603' }]
+        }
+      ])
+    };
+    const viewMock = createWebviewViewMock();
+    const service = new ComponentSearchService(
+      octopart as never,
+      lcsc as never,
+      cache,
+      undefined,
+      undefined,
+      context as never
+    );
+
+    await service.resolveWebviewView(
+      viewMock.view as never,
+      {} as never,
+      {} as never
+    );
+    await viewMock.send({ type: 'search', query: '10uF 0603' });
+
+    expect(vscode.window.showInputBox).not.toHaveBeenCalled();
+    expect(vscode.window.showQuickPick).not.toHaveBeenCalled();
+    expect(octopart.search).not.toHaveBeenCalled();
+    expect(lcsc.search).toHaveBeenCalledWith('10uF 0603');
+    expect(viewMock.view.webview.html).toContain('C25804');
+    expect(viewMock.view.webview.html).toContain('42 in stock');
+    expect(viewMock.view.webview.html).toContain('Footprint match');
+    expect(viewMock.view.webview.html).toContain('0603');
+    expect(viewMock.view.webview.html).toContain('Octopart/Nexar API key');
+    expect(context.globalState.update).toHaveBeenCalledWith(
+      'kicadstudio.componentSearch.recentSearches',
+      ['10uF 0603']
+    );
+  });
+
+  it('shows recommended searches for the selected schematic symbol context', async () => {
+    const context = createExtensionContextMock();
+    const cache = new ComponentSearchCache(
+      context.globalState as unknown as vscode.Memento
+    );
+    (vscode.workspace.fs.readFile as jest.Mock).mockResolvedValue(
+      Buffer.from(`(kicad_sch
+      (symbol
+        (property "Reference" "U1")
+        (property "Value" "STM32F411")
+        (property "Footprint" "Package_QFP:LQFP-48_7x7mm_P0.5mm")
+        (property "MPN" "STM32F411CEU6")
+      )
+    )`)
+    );
+    const viewMock = createWebviewViewMock();
+    const service = new ComponentSearchService(
+      { search: jest.fn() } as never,
+      { search: jest.fn() } as never,
+      cache,
+      undefined,
+      undefined,
+      context as never,
+      async () => ({
+        activeFile: '/workspace/controller.kicad_sch',
+        selectedReference: 'U1',
+        projectName: 'Controller'
+      })
+    );
+
+    await service.resolveWebviewView(
+      viewMock.view as never,
+      {} as never,
+      {} as never
+    );
+
+    expect(viewMock.view.webview.html).toContain('Recommended for U1');
+    expect(viewMock.view.webview.html).toContain('STM32F411CEU6');
+    expect(viewMock.view.webview.html).toContain('Controller');
+  });
+
+  it('renders ready and disabled provider states from stored secrets and settings', async () => {
+    __setConfiguration({
+      'kicadstudio.componentSearch.enableLCSC': false
+    });
+    const context = createExtensionContextMock();
+    await context.secrets.store(OCTOPART_SECRET_KEY, 'stored-octopart-key');
+    await context.secrets.store(AI_SECRET_KEYS.openai, 'stored-ai-key');
+    const cache = new ComponentSearchCache(
+      context.globalState as unknown as vscode.Memento
+    );
+    const libraryIndexer = {
+      isIndexed: jest.fn().mockReturnValue(true),
+      isStale: jest.fn().mockReturnValue(false),
+      searchSymbols: jest.fn(),
+      searchFootprints: jest.fn()
+    };
+    const viewMock = createWebviewViewMock();
+    const service = new ComponentSearchService(
+      { search: jest.fn() } as never,
+      { search: jest.fn() } as never,
+      cache,
+      libraryIndexer as never,
+      undefined,
+      context as never
+    );
+
+    await service.resolveWebviewView(
+      viewMock.view as never,
+      {} as never,
+      {} as never
+    );
+
+    expect(viewMock.view.webview.html).toContain('Indexed');
+    expect(viewMock.view.webview.html).toContain('API key stored');
+    expect(viewMock.view.webview.html).toContain('LCSC search is disabled');
+    expect(viewMock.view.webview.html).toContain('data-provider-id="lcsc"');
+    expect(viewMock.view.webview.html).toContain('Disabled');
+  });
+
+  it('handles inline result commands through the existing details, datasheet, copy, and PCM flows', async () => {
+    __setConfiguration({
+      'kicadstudio.componentSearch.enableLCSC': true
+    });
+    const context = createExtensionContextMock();
+    const cache = new ComponentSearchCache(
+      context.globalState as unknown as vscode.Memento
+    );
+    const panelMock = createPanelMock();
+    const result = {
+      source: 'lcsc' as const,
+      mpn: 'OPA192IDBVR',
+      manufacturer: 'TI',
+      description: 'Precision opamp',
+      datasheetUrl: 'https://example.com/opa192.pdf',
+      pcmPackageId: 'com.example.precision-symbols',
+      offers: [],
+      specs: []
+    };
+    const service = new ComponentSearchService(
+      { search: jest.fn() } as never,
+      { search: jest.fn().mockResolvedValue([result]) } as never,
+      cache,
+      undefined,
+      {
+        getPackages: jest.fn().mockReturnValue([]),
+        findInstallCandidateForResult: jest.fn().mockResolvedValue(undefined),
+        findPackages: jest.fn().mockResolvedValue([])
+      } as never,
+      context as never
+    );
+    const viewMock = createWebviewViewMock();
+    (vscode.window.createWebviewPanel as jest.Mock).mockReturnValue(
+      panelMock.panel
+    );
+
+    await service.resolveWebviewView(
+      viewMock.view as never,
+      {} as never,
+      {} as never
+    );
+    await viewMock.send({ type: 'not-supported' });
+    await viewMock.send({ type: 'open-result' });
+    await viewMock.send({ type: 'search', query: 'OPA192' });
+    await viewMock.send({ type: 'setup-octopart', query: 'OPA192' });
+    await viewMock.send({ type: 'setup-ai', query: 'OPA192' });
+    await viewMock.send({ type: 'open-result', index: 0 });
+    await viewMock.send({ type: 'datasheet', index: 0 });
+    await viewMock.send({ type: 'copy-mpn', index: 0 });
+    await viewMock.send({ type: 'pcm-install', index: 0 });
+    viewMock.dispose();
+
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
+      COMMANDS.setOctopartApiKey
+    );
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
+      COMMANDS.setAiApiKey
+    );
+    expect(vscode.window.createWebviewPanel).toHaveBeenCalledTimes(1);
+    expect(vscode.env.openExternal).toHaveBeenCalled();
+    expect(vscode.env.clipboard.writeText).toHaveBeenCalledWith('OPA192IDBVR');
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
+      COMMANDS.installPcmPackage,
+      'com.example.precision-symbols'
+    );
+  });
+
+  it('renders inline metadata branches for stock, footprint, and confidence states', async () => {
+    __setConfiguration({
+      'kicadstudio.componentSearch.enableLCSC': true
+    });
+    const context = createExtensionContextMock();
+    const cache = new ComponentSearchCache(
+      context.globalState as unknown as vscode.Memento
+    );
+    const lcsc = {
+      search: jest.fn().mockResolvedValue([
+        {
+          source: 'lcsc',
+          mpn: 'TPS5430',
+          manufacturer: 'TI',
+          description: 'Buck regulator',
+          offers: [{ seller: 'LCSC', prices: [] }],
+          specs: [{ name: 'Package', value: 'SOIC-8' }]
+        },
+        {
+          source: 'lcsc',
+          mpn: 'LM1117',
+          manufacturer: 'TI',
+          description: 'Linear regulator',
+          offers: [],
+          specs: []
+        }
+      ])
+    };
+    const viewMock = createWebviewViewMock();
+    const service = new ComponentSearchService(
+      { search: jest.fn() } as never,
+      lcsc as never,
+      cache,
+      undefined,
+      undefined,
+      context as never
+    );
+
+    await service.resolveWebviewView(
+      viewMock.view as never,
+      {} as never,
+      {} as never
+    );
+    await viewMock.send({ type: 'search', query: 'buck soic' });
+
+    expect(viewMock.view.webview.html).toContain('Stock not reported');
+    expect(viewMock.view.webview.html).toContain('No availability data');
+    expect(viewMock.view.webview.html).toContain('SOIC-8');
+    expect(viewMock.view.webview.html).toContain('Not reported');
+    expect(viewMock.view.webview.html).toContain('Medium');
+    expect(viewMock.view.webview.html).toContain('Low');
   });
 });

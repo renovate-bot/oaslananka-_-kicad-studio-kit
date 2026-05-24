@@ -42,7 +42,7 @@
   "kicadstudio.contributes.viewsWelcome.15.contents": "kicad-mcp-pro VS Code stdio üzerinden bağlı.\n\nKalite Kapıları HTTP taşımasını gerektirir (port 27185).\n[HTTP Moduna Geç](command:kicadstudio.mcp.launchHttp)",
   "kicadstudio.contributes.viewsWelcome.16.contents": "Etkin projede `.kicad_dru` kural dosyası bulunamadı.\n\n[.kicad_dru Oluştur](command:kicadstudio.drcRule.createDefault)\n[Başlangıç Şablonunu İçe Aktar](command:kicadstudio.drcRule.importTemplate)\n[AI ile DRC Kuralı Ekle](command:kicadstudio.drcRule.addWithMcp)\n[KiCad tasarım kuralları belgelerini aç](command:kicadstudio.qualityGate.openDocs)",
   "kicadstudio.contributes.viewsWelcome.17.contents": "Özel DRC kurallarını yönetmek için bir KiCad projesi açın.\n[Klasör Aç](command:workbench.action.files.openFolder)",
-  "kicadstudio.contributes.viewsWelcome.18.contents": "Yerel KiCad kütüphaneleri, LCSC ve Octopart/Nexar genelinde parça numarası, anahtar sözcük veya footprint ile bileşen arayın.\n[Bileşen Ara](command:kicadstudio.searchComponent)\n\nBulut aramasını etkinleştirmek için Octopart/Nexar API anahtarınızı kaydedin:\n[Octopart/Nexar API Anahtarını Ayarla](command:kicadstudio.setOctopartApiKey)\n\nAI destekli eşleştirme için AI sağlayıcı anahtarlarını yapılandırın:\n[AI API Anahtarını Ayarla](command:kicadstudio.setAiApiKey)",
+  "kicadstudio.contributes.viewsWelcome.18.contents": "Bileşenleri doğrudan bu görünümden arayın. Sağlayıcı kurulumu yalnızca eksik anahtar veya devre dışı kaynak dikkat gerektirdiğinde görünür.",
   "kicadstudio.contributes.commands.0.title": "KiCad: Şematik Görüntüleyici Olarak Aç",
   "kicadstudio.contributes.commands.0.category": "KiCad",
   "kicadstudio.contributes.commands.1.title": "KiCad: PCB Görüntüleyici Olarak Aç",
