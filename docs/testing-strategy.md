@@ -13,7 +13,7 @@ notes can add detail, but they should not weaken these gates.
 | Gate                 | Trigger                                                              | Purpose                                                                                         | Required command                                   |
 | -------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | -------------------------------------------------- |
 | Fast PR gate         | Every pull request                                                   | Catch formatting, lint, type, unit, package, metadata, boundary, and compatibility regressions. | `corepack pnpm run check`                          |
-| Performance budget   | Every pull request                                                   | Report shared baseline drift and fail measured lanes that exceed the regression budget.         | `corepack pnpm run check:performance-budgets`      |
+| Performance budget   | Product, integration, and shared fixture/schema pull requests        | Report shared baseline drift and fail measured lanes that exceed the regression budget.         | `corepack pnpm run check:performance-budgets`      |
 | Product gate         | Product-scoped changes                                               | Prove the touched product still builds, tests, and packages independently.                      | Product commands below                             |
 | Accessibility gate   | Extension-owned UI and webview changes                               | Prove WCAG 2.1 AA automated checks remain clean for in-scope extension surfaces.                | `corepack pnpm --filter kicadstudio run test:a11y` |
 | Contract gate        | Protocol, compatibility, or cross-product changes                    | Prove extension and MCP assumptions remain aligned.                                             | `corepack pnpm run test:contract`                  |
@@ -94,6 +94,34 @@ corepack pnpm run test:contract
 corepack pnpm run test:fixtures
 ```
 
+## Path-Filtered CI Lanes
+
+The fast CI workflow starts with `.github/workflows/ci.yml` job `ci-lanes`.
+That job runs `node scripts/check-ci-lanes.mjs`, writes lane decisions to
+`GITHUB_OUTPUT`, and writes a skip/run table to `GITHUB_STEP_SUMMARY`.
+
+| Lane                  | Trigger paths                                                                                                                    | CI behavior                                                                                       |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Metadata and policy   | Every run                                                                                                                        | Runs repository policy, ownership, version, compatibility, release-please, and governance checks. |
+| VS Code extension     | `apps/vscode-extension/**`, legacy `apps/kicad-studio/**`, or root toolchain/CI changes                                          | Runs extension format, lint, typecheck, unit/a11y tests, build, package, and package validation.  |
+| MCP server            | `packages/mcp-server/**`, legacy `apps/kicad-mcp-pro/**`, compatibility/release metadata, or root toolchain/CI changes           | Runs MCP metadata, format, lint, typecheck, unit tests, manifest checks, and package validation.  |
+| MCP npm launcher      | `packages/mcp-npm/**`, MCP server/package metadata, shared schemas, or root toolchain/CI changes                                 | Runs npm install, pack dry-run, and launcher help smoke.                                          |
+| Shared packages       | `packages/protocol-schemas/**`, `packages/kicad-fixtures/**`, `packages/test-harness/**`, or fixture corpus paths                | Runs fixture validation, compatibility matrix checks, and MCP contract validation.                |
+| Integration contracts | Protocol schemas, extension MCP adapter paths, MCP runtime/capability paths, release/compatibility metadata, or workflow changes | Runs cross-product contract validation and selected real-pair compatibility tests.                |
+| Performance budgets   | Extension, MCP, shared fixture/schema, or root toolchain/CI changes                                                              | Measures extension and MCP benchmark outputs and checks shared performance budgets.               |
+
+Manual and scheduled dispatches run every lane. If the event payload cannot
+provide a safe diff range, the detector falls back to running every lane rather
+than accidentally skipping validation. The lane summary must show each skipped
+lane and the reason it was skipped so reviewers can see when a product job was
+intentionally avoided.
+
+Validate the lane detector locally with:
+
+```bash
+corepack pnpm run check:ci-lanes
+```
+
 ## Performance Budgets
 
 `performance/baselines.json` is the shared performance budget catalog for
@@ -101,11 +129,12 @@ activation, project scan, viewer, validation, MCP, and memory regressions. The
 policy and benchmark-producer contract live in
 [`docs/performance-baselines.md`](performance-baselines.md).
 
-Every PR runs the performance catalog check through the root gate and the CI
-`performance-budgets` job records benchmark measurements plus the budget report
-as workflow artifacts. A measured metric warns after 10 percent drift and fails
-after 20 percent drift. Use the dedicated budget check while changing baseline
-metadata:
+Every full local pre-flight runs the performance catalog check through the root
+gate. CI runs the `performance-budgets` job when changed paths can affect
+extension, MCP, shared fixture/schema, or root toolchain behavior, and records
+benchmark measurements plus the budget report as workflow artifacts. A measured
+metric warns after 10 percent drift and fails after 20 percent drift. Use the
+dedicated budget check while changing baseline metadata:
 
 ```bash
 corepack pnpm run check:performance-budgets
@@ -274,8 +303,9 @@ corepack pnpm run test:fixtures
 
 CI ownership follows product boundaries:
 
-- `.github/workflows/ci.yml` owns fast PR lanes for metadata, extension, MCP
-  server, MCP performance budgets, npm wrapper, and forbidden reference checks.
+- `.github/workflows/ci.yml` owns path-filtered fast PR lanes for metadata,
+  extension, MCP server, shared packages, integration contracts, MCP
+  performance budgets, npm wrapper, and forbidden reference checks.
 - `.github/workflows/security.yml`, `.github/workflows/gitleaks.yml`, and
   `.github/workflows/codeql.yml` own security and static analysis lanes.
 - `.github/workflows/nightly-quality-gates.yml` owns the non-release scheduled
@@ -314,6 +344,9 @@ This strategy was checked against current primary sources:
   and checksum-backed official KiCad installer URL.
 - GitHub Actions artifact documentation and `actions/upload-artifact` metadata
   for scheduled failure log and screenshot uploads.
+- GitHub Actions workflow syntax docs for `pull_request` path filtering,
+  two-dot/three-dot diff behavior, job outputs through `GITHUB_OUTPUT`, job
+  conditionals through `needs.<job>.outputs`, and `GITHUB_STEP_SUMMARY`.
 - Model Context Protocol 2025-06-18 transport docs for Streamable HTTP,
   session handling, and `MCP-Protocol-Version`.
 - GitHub Actions workflow syntax docs for scheduled and manually dispatched
