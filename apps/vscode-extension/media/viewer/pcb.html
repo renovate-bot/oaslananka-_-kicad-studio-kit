@@ -136,9 +136,13 @@
             <div class="spinner" aria-hidden="true"></div>
             <span>Loading board…</span>
           </div>
-          <div id="error-overlay" hidden>
+          <div id="error-overlay" role="alert" aria-live="polite" hidden>
             <span id="error-message"></span>
-            <pre id="error-details"></pre>
+            <pre
+              id="error-details"
+              tabindex="0"
+              aria-label="Error details"
+            ></pre>
           </div>
         </div>
         <aside id="info-panel">

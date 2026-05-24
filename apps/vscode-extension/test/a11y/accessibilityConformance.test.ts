@@ -134,11 +134,12 @@ describe('native VS Code surface accessibility gate', () => {
   });
 
   it('labels MCP Tools, Quality Gates, and AI Fix Queue tree rows', async () => {
-    const issues = [
-      ...collectMcpToolsTreeIssues(),
-      ...collectQualityGateTreeIssues(),
-      ...(await collectFixQueueTreeIssues())
-    ];
+    const [mcpIssues, qualityGateIssues, fixQueueIssues] = await Promise.all([
+      collectMcpToolsTreeIssues(),
+      collectQualityGateTreeIssues(),
+      collectFixQueueTreeIssues()
+    ]);
+    const issues = [...mcpIssues, ...qualityGateIssues, ...fixQueueIssues];
 
     expect(issues).toEqual([]);
   });
@@ -824,7 +825,7 @@ function createComponentSearchDetailsHtml(): string {
   });
 }
 
-function collectMcpToolsTreeIssues(): string[] {
+async function collectMcpToolsTreeIssues(): Promise<string[]> {
   const capabilities: McpCapabilityCard = {
     tools: ['pcb_validate'],
     resources: ['project://active'],
@@ -848,7 +849,7 @@ function collectMcpToolsTreeIssues(): string[] {
   return collectTreeProviderIssues('MCP Tools', provider);
 }
 
-function collectQualityGateTreeIssues(): string[] {
+async function collectQualityGateTreeIssues(): Promise<string[]> {
   const context = createExtensionContextMock();
   const provider = new QualityGateProvider(context as never, {} as never);
   return collectTreeProviderIssues('Quality Gates', provider);
@@ -871,37 +872,40 @@ async function collectFixQueueTreeIssues(): Promise<string[]> {
   return collectTreeProviderIssues('AI Fix Queue', provider);
 }
 
-function collectTreeProviderIssues(
+async function collectTreeProviderIssues(
   surfaceName: string,
   provider: vscode.TreeDataProvider<unknown>
-): string[] {
-  return walkTreeProvider(surfaceName, provider).flatMap(
+): Promise<string[]> {
+  return (await walkTreeProvider(surfaceName, provider)).flatMap(
     ({ path: itemPath, item }) => collectTreeItemIssues(itemPath, item)
   );
 }
 
-function walkTreeProvider(
+async function walkTreeProvider(
   surfaceName: string,
   provider: vscode.TreeDataProvider<unknown>,
   element?: unknown,
   parentPath = surfaceName
-): Array<{ path: string; item: vscode.TreeItem }> {
-  const children = provider.getChildren(element) as unknown[];
-  return children.flatMap((child) => {
-    const item = provider.getTreeItem(child) as vscode.TreeItem;
-    const label =
-      typeof item.label === 'string'
-        ? item.label
-        : item.label
-          ? String(item.label)
-          : 'unlabeled';
-    const itemPath = `${parentPath} > ${label}`;
-    const descendants =
-      item.collapsibleState !== vscode.TreeItemCollapsibleState.None
-        ? walkTreeProvider(itemPath, provider, child, itemPath)
-        : [];
-    return [{ path: itemPath, item }, ...descendants];
-  });
+): Promise<Array<{ path: string; item: vscode.TreeItem }>> {
+  const children = ((await provider.getChildren(element)) ?? []) as unknown[];
+  const items = await Promise.all(
+    children.map(async (child) => {
+      const item = (await provider.getTreeItem(child)) as vscode.TreeItem;
+      const label =
+        typeof item.label === 'string'
+          ? item.label
+          : item.label
+            ? String(item.label)
+            : 'unlabeled';
+      const itemPath = `${parentPath} > ${label}`;
+      const descendants =
+        item.collapsibleState !== vscode.TreeItemCollapsibleState.None
+          ? await walkTreeProvider(surfaceName, provider, child, itemPath)
+          : [];
+      return [{ path: itemPath, item }, ...descendants];
+    })
+  );
+  return items.flat();
 }
 
 function collectTreeItemIssues(
@@ -937,9 +941,12 @@ function collectStatusBarItemIssues(
     return [];
   }
   const strippedText = item.text.replace(/\$\([^)]+\)/gu, '').trim();
+  const accessibilityLabel = item.accessibilityInformation?.label?.trim() ?? '';
   const tooltip = String(item.tooltip ?? '').trim();
   return [
-    !strippedText ? `status bar item ${index} has only an icon label` : '',
+    !strippedText && !accessibilityLabel
+      ? `status bar item ${index} has only an icon label`
+      : '',
     !tooltip ? `status bar item ${index} is missing a tooltip` : ''
   ].filter(Boolean);
 }

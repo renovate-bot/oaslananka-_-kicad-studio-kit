@@ -142,7 +142,7 @@ export function createKiCanvasViewerHtml(
           ${
             hasLayerControls
               ? `<button class="btn" id="all-layers-btn" type="button" aria-label="Show All layers">All</button>
-          <button class="btn" id="none-layers-btn" type="button" aria-label="Hide None layers">None</button>
+          <button class="btn" id="none-layers-btn" type="button" aria-label="None - hide all layers">None</button>
           <button class="btn" id="copper-layers-btn" type="button" aria-label="Show Copper Only layers">Copper Only</button>`
               : ''
           }

@@ -28,14 +28,19 @@
 
   function syncExportState(loading = isLoading) {
     const disabled = loading || entries.length === 0;
-    exportCsv.disabled = disabled;
-    exportXlsx.disabled = disabled;
-    exportCsv.title = disabled
-      ? 'Export is available after BOM rows are loaded.'
-      : 'Export BOM as CSV';
-    exportXlsx.title = disabled
-      ? 'Export is available after BOM rows are loaded.'
-      : 'Export BOM as XLSX';
+    syncExportButton(exportCsv, disabled, 'Export BOM as CSV');
+    syncExportButton(exportXlsx, disabled, 'Export BOM as XLSX');
+  }
+
+  function syncExportButton(button, disabled, enabledTitle) {
+    button.disabled = disabled;
+    if (disabled) {
+      button.title = 'Export is available after BOM rows are loaded.';
+      button.setAttribute('aria-describedby', 'bom-export-disabled-reason');
+    } else {
+      button.title = enabledTitle;
+      button.removeAttribute('aria-describedby');
+    }
   }
 
   function showEmpty(message) {
