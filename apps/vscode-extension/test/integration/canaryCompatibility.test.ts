@@ -40,7 +40,13 @@ suite('VS Code Canary Compatibility', () => {
       'kicadstudio.openPCB',
       'kicadstudio.runDRC',
       'kicadstudio.runERC',
-      'kicadstudio.mcp.retry'
+      'kicadstudio.setupMcpIntegration',
+      'kicadstudio.mcp.retry',
+      'kicadstudio.mcp.launchHttp',
+      'kicadstudio.mcp.openUpgradeGuide',
+      'kicadstudio.mcp.pickProfile',
+      'kicadstudio.mcp.openLog',
+      'kicadstudio.mcp.saveLog'
     ]) {
       assert.ok(commands.includes(command), `Missing command ${command}`);
     }
