@@ -227,7 +227,9 @@ export async function activate(
     new LcscClient(),
     new ComponentSearchCache(context.globalState),
     libraryIndexer,
-    pcmService
+    pcmService,
+    context,
+    () => buildStudioContext()
   );
 
   context.subscriptions.push(
@@ -309,11 +311,11 @@ export async function activate(
       NETLIST_VIEW_ID,
       netlistViewProvider
     ),
-    // Static empty trees — viewsWelcome supplies the button content.
-    vscode.window.registerTreeDataProvider(COMPONENT_SEARCH_VIEW_ID, {
-      getTreeItem: (element: vscode.TreeItem) => element,
-      getChildren: () => []
-    }),
+    vscode.window.registerWebviewViewProvider(
+      COMPONENT_SEARCH_VIEW_ID,
+      componentSearch,
+      { webviewOptions: { retainContextWhenHidden: true } }
+    ),
     vscode.window.registerTreeDataProvider(
       VALIDATION_VIEW_ID,
       validationViewProvider
@@ -531,13 +533,25 @@ export async function activate(
 
   async function refreshContexts(): Promise<void> {
     const activeUri = getActiveResourceUri();
-    const projects = await discoverKiCadProjects(vscode.workspace.workspaceFolders);
+    const projects = await discoverKiCadProjects(
+      vscode.workspace.workspaceFolders
+    );
     const hasProject =
       projects.length > 0 ||
-      (await vscode.workspace.findFiles('**/*.kicad_sch', '**/node_modules/**', 1))
-        .length > 0 ||
-      (await vscode.workspace.findFiles('**/*.kicad_pcb', '**/node_modules/**', 1))
-        .length > 0;
+      (
+        await vscode.workspace.findFiles(
+          '**/*.kicad_sch',
+          '**/node_modules/**',
+          1
+        )
+      ).length > 0 ||
+      (
+        await vscode.workspace.findFiles(
+          '**/*.kicad_pcb',
+          '**/node_modules/**',
+          1
+        )
+      ).length > 0;
     const trusted = isWorkspaceTrusted();
     const provider = await aiProviders.getProvider();
     const cli = trusted ? await cliDetector.detect() : undefined;

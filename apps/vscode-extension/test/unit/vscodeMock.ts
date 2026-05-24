@@ -155,6 +155,7 @@ export const window = {
     dispose: jest.fn()
   })),
   createWebviewPanel: jest.fn(),
+  registerWebviewViewProvider: jest.fn(() => createDisposable()),
   createQuickPick: jest.fn(() => ({
     items: [],
     selectedItems: [],
