@@ -40,8 +40,6 @@ Bug fixes should include automated regression coverage when practical. Use unit 
 integration tests, fixture checks, contract tests, or visual/accessibility checks based on the
 changed surface.
 
-Runtime support changes must follow the [support matrix](support-matrix.md).
-
 ## Accessibility Coverage
 
 New or changed KiCad Studio UI must keep the accessibility gate current before a
@@ -68,3 +66,5 @@ Contributor requirements:
   transitions.
 
 See [accessibility conformance target](accessibility.md) for the full policy.
+
+Runtime support changes must follow the [support matrix](support-matrix.md).
