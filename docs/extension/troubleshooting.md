@@ -25,6 +25,18 @@ viewer and test strategy references:
 ## MCP Tools Are Disconnected
 
 Use the MCP Tools view to inspect endpoint, transport, profile, server-info, and capability state.
+The compatibility dashboard reports the MCP server name and version, endpoint and transport,
+protocol and tool schema versions, KiCad CLI path and version, live GUI availability, live PCB and
+schematic context, advertised tools/resources/prompts, missing required tools, missing optional
+capabilities, last health check, last error, and remediation hint.
+
+Treat a degraded dashboard state as a connected server with missing runtime guarantees. Common
+degraded causes include an unavailable live PCB context, VS Code stdio transport for HTTP-only
+workflows, disabled stateless Streamable HTTP, missing ChatGPT connector compatibility, or missing
+extension-required tools. Use the dashboard actions to reconnect, refresh capabilities, open or save
+the MCP log, pick a profile, switch endpoint, launch the local MCP server, or open compatibility
+docs.
+
 For setup details, see:
 
 - [MCP overview](../mcp/)
