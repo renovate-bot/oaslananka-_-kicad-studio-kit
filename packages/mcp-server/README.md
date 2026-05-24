@@ -16,6 +16,29 @@ configuration and privacy rules are documented in
 [`docs/configuration.md`](docs/configuration.md#opentelemetry) and the monorepo
 [`docs/telemetry.md`](../../docs/telemetry.md).
 
+## Transports
+
+KiCad MCP Pro supports `stdio` and Streamable HTTP. Streamable HTTP is served at
+`/mcp` by default and can be moved with `KICAD_MCP_MOUNT_PATH`.
+
+```bash
+uvx kicad-mcp-pro@1.0.0 --transport streamable-http --host 127.0.0.1 --port 3334
+```
+
+Streamable HTTP clients must send:
+
+- `Accept: application/json, text/event-stream`
+- `Content-Type: application/json`
+- `MCP-Protocol-Version: 2025-11-25` after initialization
+- `MCP-Session-Id` on follow-up requests when `KICAD_MCP_STATEFUL_HTTP=1`
+
+By default Streamable HTTP is stateless, so ChatGPT-style connectors can
+initialize and call `tools/list` without a session-header injection proxy. Set
+`KICAD_MCP_STATEFUL_HTTP=1` to require session IDs after `initialize`.
+
+The deprecated HTTP+SSE fallback routes are disabled by default. Set
+`KICAD_MCP_LEGACY_SSE=1` only for older clients that cannot use Streamable HTTP.
+
 ## Install
 
 ```bash

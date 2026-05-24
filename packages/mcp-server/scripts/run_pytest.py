@@ -10,6 +10,7 @@ import pytest
 
 SUITES = {
     "unit": ["tests/unit/", "-q"],
+    "transport-contract": ["tests/unit/test_mcp_protocol_contract.py", "-q"],
     "gui": ["tests/gui/", "-q"],
     "full": [
         "tests/unit/",
