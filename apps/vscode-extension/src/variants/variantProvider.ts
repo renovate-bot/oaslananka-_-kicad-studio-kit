@@ -9,7 +9,14 @@ import type {
 import { findFirstWorkspaceFile } from '../utils/pathUtils';
 import type { VariantMcpAdapter } from '../mcp/mcpToolAdapter';
 import { createNonce } from '../utils/nonce';
+import { localize } from '../i18n';
 import { localizeWebviewMessage, webviewLocale } from '../webviewI18n';
+import {
+  isSidebarWorkflowState,
+  sidebarState,
+  sidebarStateTreeItem,
+  type SidebarWorkflowState
+} from '../providers/sidebarWorkflowState';
 
 interface VariantDocument {
   activeVariant?: string | undefined;
@@ -39,15 +46,16 @@ class VariantTreeItem extends vscode.TreeItem {
   }
 }
 
-export class VariantProvider implements vscode.TreeDataProvider<
-  KiCadVariant | VariantOverride
-> {
+type VariantTreeNode = KiCadVariant | VariantOverride | SidebarWorkflowState;
+
+export class VariantProvider implements vscode.TreeDataProvider<VariantTreeNode> {
   private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<
-    KiCadVariant | VariantOverride | undefined
+    VariantTreeNode | undefined
   >();
   readonly onDidChangeTreeData = this.onDidChangeTreeDataEmitter.event;
   private variants: KiCadVariant[] = [];
   private projectFile: string | undefined;
+  private hasExplicitVariants = false;
 
   constructor(private readonly mcpAdapter?: VariantMcpAdapter | undefined) {}
 
@@ -57,7 +65,10 @@ export class VariantProvider implements vscode.TreeDataProvider<
     );
   }
 
-  getTreeItem(element: KiCadVariant | VariantOverride): vscode.TreeItem {
+  getTreeItem(element: VariantTreeNode): vscode.TreeItem {
+    if (isSidebarWorkflowState(element)) {
+      return sidebarStateTreeItem(element);
+    }
     if ('componentOverrides' in element) {
       return new VariantTreeItem(
         element,
@@ -85,9 +96,10 @@ export class VariantProvider implements vscode.TreeDataProvider<
     return item;
   }
 
-  async getChildren(
-    element?: KiCadVariant | VariantOverride
-  ): Promise<Array<KiCadVariant | VariantOverride>> {
+  async getChildren(element?: VariantTreeNode): Promise<VariantTreeNode[]> {
+    if (isSidebarWorkflowState(element)) {
+      return [];
+    }
     if (element && 'componentOverrides' in element) {
       return element.componentOverrides;
     }
@@ -96,6 +108,32 @@ export class VariantProvider implements vscode.TreeDataProvider<
     }
 
     await this.loadVariants();
+    if (!this.projectFile) {
+      return [
+        sidebarState(
+          'empty',
+          localize('variantNoProjectLabel'),
+          localize('variantNoProjectDescription'),
+          localize('variantNoProjectDetail'),
+          'repo'
+        )
+      ];
+    }
+    if (!this.hasExplicitVariants) {
+      return [
+        sidebarState(
+          'empty',
+          localize('variantNoVariantsLabel'),
+          localize('variantNoVariantsDescription'),
+          localize('variantNoVariantsDetail'),
+          'symbol-namespace',
+          {
+            command: COMMANDS.createVariant,
+            title: localize('variantCreateCommand')
+          }
+        )
+      ];
+    }
     return this.variants;
   }
 
@@ -212,6 +250,7 @@ export class VariantProvider implements vscode.TreeDataProvider<
     }
 
     const document = readVariantDocument(projectFile);
+    this.hasExplicitVariants = hasVariantDefinitions(document);
     this.variants = normalizeVariants(document);
   }
 
@@ -300,6 +339,14 @@ function normalizeVariants(document: VariantDocument): KiCadVariant[] {
   }
 
   return variants;
+}
+
+function hasVariantDefinitions(document: VariantDocument): boolean {
+  return (
+    (Array.isArray(document['variants']) && document['variants'].length > 0) ||
+    (Array.isArray(document['design_variants']) &&
+      document['design_variants'].length > 0)
+  );
 }
 
 function normalizeVariant(
