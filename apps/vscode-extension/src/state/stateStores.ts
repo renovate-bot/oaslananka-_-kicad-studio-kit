@@ -8,6 +8,7 @@ import type {
   McpServerCard,
   ViewerState
 } from '../types';
+import { cloneViewerEngineState } from '../providers/viewer/viewerEngine';
 import { redactSensitiveText } from '../utils/secrets';
 import {
   cloneProjectContext,
@@ -531,6 +532,7 @@ function cloneSummary(summary: DiagnosticSummary): DiagnosticSummary {
 function cloneViewerState(state: ViewerState): ViewerState {
   return {
     ...state,
+    engine: state.engine ? cloneViewerEngineState(state.engine) : undefined,
     selectedArea: state.selectedArea ? { ...state.selectedArea } : undefined,
     activeLayers: state.activeLayers ? [...state.activeLayers] : undefined
   };

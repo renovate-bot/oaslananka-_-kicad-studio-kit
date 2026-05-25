@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
-import type { ViewerMetadata, ViewerState } from '../types';
+import type { ViewerEngineState, ViewerMetadata, ViewerState } from '../types';
 import { createNonce } from '../utils/nonce';
 import { getViewerSidebarWidth } from './viewer/viewerLayerPanel';
+import { createViewerEngineState } from './viewer/viewerEngine';
 import { createViewerPayload } from './viewer/viewerPayload';
 import { resolveViewerPalette } from './viewer/viewerPalette';
 import { compactHtmlDocument, escapeScriptJson } from './viewer/viewerTemplate';
@@ -23,6 +24,7 @@ export interface KiCanvasViewerHtmlOptions {
   disabledReason: string;
   theme?: string;
   fallbackBackground?: string;
+  initialEngine?: ViewerEngineState | undefined;
   metadata?: ViewerMetadata;
   restoreState?: ViewerState | undefined;
 }
@@ -42,9 +44,16 @@ export function createKiCanvasViewerHtml(
     disabledReason: options.disabledReason,
     theme: themeName,
     fallbackBackground: options.fallbackBackground ?? '',
+    ...(options.initialEngine ? { initialEngine: options.initialEngine } : {}),
     ...(options.metadata ? { metadata: options.metadata } : {}),
     ...(options.restoreState ? { restoreState: options.restoreState } : {})
   });
+  const initialEngine =
+    payload.engine ??
+    createViewerEngineState(
+      options.disabledReason ? 'metadata-only' : 'kicanvas',
+      options.disabledReason || undefined
+    );
 
   return injectWebviewLocalization(
     compactHtmlDocument(String.raw`<!DOCTYPE html>
@@ -92,6 +101,7 @@ export function createKiCanvasViewerHtml(
       <button class="btn" id="export-png-btn" type="button" aria-label="Export PNG">Export PNG</button>
       <button class="btn" id="export-svg-btn" type="button" aria-label="Export SVG">Export SVG</button>
     </div>
+    <span id="viewer-engine-badge" class="engine-badge" data-engine-kind="${escapeAttr(initialEngine.kind)}" title="${escapeAttr(initialEngine.reason ?? initialEngine.label)}">${escapeHtml(initialEngine.label)}</span>
     <span id="viewer-status">${escapeHtml(options.status)}</span>
   </header>
 
@@ -133,6 +143,10 @@ export function createKiCanvasViewerHtml(
     </div>
 
     <aside aria-label="Viewer side panel">
+      <div class="side-section" id="engine-section">
+        <h2>Viewer Engine</h2>
+        <div id="engine-summary" class="meta-row">${escapeHtml(initialEngine.reason ?? initialEngine.label)}</div>
+      </div>
       <div class="side-section">
         <h2>Viewer Tools</h2>
         <div class="side-actions">
@@ -190,10 +204,58 @@ export function createKiCanvasViewerHtml(
     const notesListEl    = document.getElementById('notes-list');
     const notesSection   = document.getElementById('notes-section');
     const selectionSummaryEl = document.getElementById('selection-summary');
+    const engineBadgeEl = document.getElementById('viewer-engine-badge');
+    const engineSummaryEl = document.getElementById('engine-summary');
+    const fitBtn = document.getElementById('fit-btn');
+    const zoomInBtn = document.getElementById('zoom-in-btn');
+    const zoomOutBtn = document.getElementById('zoom-out-btn');
+    const exportPngBtn = document.getElementById('export-png-btn');
+    const exportSvgBtn = document.getElementById('export-svg-btn');
+    const allLayersBtn = document.getElementById('all-layers-btn');
+    const noneLayersBtn = document.getElementById('none-layers-btn');
+    const copperLayersBtn = document.getElementById('copper-layers-btn');
 
     const payload = JSON.parse(
       document.getElementById('viewer-payload').textContent || '{}'
     );
+    const ViewerEngines = {
+      kicanvas: {
+        label: 'KiCanvas',
+        capabilities: {
+          interactive: true,
+          fit: true,
+          zoom: true,
+          exportPng: true,
+          exportSvg: true,
+          selection: true,
+          layers: true
+        }
+      },
+      'cli-svg-fallback': {
+        label: 'CLI SVG fallback',
+        capabilities: {
+          interactive: false,
+          fit: true,
+          zoom: true,
+          exportPng: true,
+          exportSvg: true,
+          selection: false,
+          layers: false
+        }
+      },
+      'metadata-only': {
+        label: 'Metadata only',
+        capabilities: {
+          interactive: false,
+          fit: false,
+          zoom: false,
+          exportPng: false,
+          exportSvg: true,
+          selection: false,
+          layers: false
+        }
+      }
+    };
     let keydownHandler = null;
     let fallbackSvgDataUrl = '';
     let fallbackSvgElement = null;
@@ -203,10 +265,12 @@ export function createKiCanvasViewerHtml(
     let fallbackSvgFitScale = 1;
     let fallbackSvgScale = 1;
     let fallbackResizeHandler = null;
-    let localState = payload.restoreState || {
+    let localState = {
       zoom: 1,
       grid: false,
-      theme: payload.theme || 'kicad'
+      theme: payload.theme || 'kicad',
+      ...(payload.restoreState || {}),
+      engine: payload.engine || createEngineState(payload.disabledReason ? 'metadata-only' : 'kicanvas', payload.disabledReason || undefined)
     };
 
     document.getElementById('reload-btn').addEventListener('click', () => initViewer());
@@ -215,13 +279,14 @@ export function createKiCanvasViewerHtml(
     document.getElementById('error-open-btn').addEventListener('click', openInKiCad);
     document.getElementById('export-png-btn').addEventListener('click', exportPng);
     document.getElementById('export-svg-btn').addEventListener('click', exportSvg);
-    document.getElementById('fit-btn').addEventListener('click', fitCurrentViewer);
-    document.getElementById('zoom-in-btn').addEventListener('click', () => zoomCurrentViewer(1));
-    document.getElementById('zoom-out-btn').addEventListener('click', () => zoomCurrentViewer(-1));
-    document.getElementById('all-layers-btn')?.addEventListener('click', () => setAllLayers(true));
-    document.getElementById('none-layers-btn')?.addEventListener('click', () => setAllLayers(false));
-    document.getElementById('copper-layers-btn')?.addEventListener('click', () => setCopperOnly());
+    fitBtn.addEventListener('click', fitCurrentViewer);
+    zoomInBtn.addEventListener('click', () => zoomCurrentViewer(1));
+    zoomOutBtn.addEventListener('click', () => zoomCurrentViewer(-1));
+    allLayersBtn?.addEventListener('click', () => setAllLayers(true));
+    noneLayersBtn?.addEventListener('click', () => setAllLayers(false));
+    copperLayersBtn?.addEventListener('click', () => setCopperOnly());
     renderSidebar();
+    updateEngineUi(localState.engine);
 
     window.addEventListener('message', (event) => {
       const msg = event.data || {};
@@ -236,7 +301,12 @@ export function createKiCanvasViewerHtml(
               ? msg.payload.fallbackBackground
               : payload.fallbackBackground;
           payload.restoreState   = msg.payload.restoreState || payload.restoreState;
-          localState             = payload.restoreState || localState;
+          payload.engine         = msg.payload.engine || payload.engine;
+          localState             = {
+            ...localState,
+            ...(payload.restoreState || {}),
+            engine: payload.engine || localState.engine
+          };
         }
         void initViewer();
       }
@@ -247,7 +317,10 @@ export function createKiCanvasViewerHtml(
             ? msg.payload.fallbackBackground
             : payload.fallbackBackground;
         payload.restoreState = msg.payload?.restoreState || payload.restoreState;
-        localState = payload.restoreState || localState;
+        localState = {
+          ...localState,
+          ...(payload.restoreState || {})
+        };
         void initViewer();
       }
       if (msg.type === 'setMetadata') {
@@ -281,9 +354,11 @@ export function createKiCanvasViewerHtml(
       setViewerSurfaceVisible(false);
       hideAll();
       showLoading('Waiting for KiCanvas…');
+      setEngineUiState('kicanvas');
 
       try {
         if (payload.disabledReason) {
+          setEngineState('metadata-only', payload.disabledReason);
           showEmpty(payload.disabledReason, '');
           return;
         }
@@ -350,6 +425,7 @@ export function createKiCanvasViewerHtml(
             return;
           }
           if (probablyEmpty) {
+            setEngineState('metadata-only', 'No drawable objects were detected.');
             showEmpty(
               payload.fileType === 'board'
                 ? 'This PCB file is structurally valid but currently only contains the board document skeleton.'
@@ -374,6 +450,7 @@ export function createKiCanvasViewerHtml(
               return;
             }
             if (probablyEmpty) {
+              setEngineState('metadata-only', 'No drawable objects were detected.');
               showEmpty(
                 payload.fileType === 'board'
                   ? 'This PCB file is structurally valid but currently only contains the board document skeleton.'
@@ -396,6 +473,7 @@ export function createKiCanvasViewerHtml(
         renderHopOverOverlay();
         hideAll();
         installKeyboardShortcuts(viewer);
+        setEngineState('kicanvas');
         setStatus('Interactive renderer loaded: ' + payload.fileName);
         vscode.postMessage({ type: 'ready', payload: { fileName: payload.fileName } });
 
@@ -751,13 +829,70 @@ export function createKiCanvasViewerHtml(
       });
     }
 
+    function createEngineState(kind, reason) {
+      const definition = ViewerEngines[kind] || ViewerEngines.kicanvas;
+      return {
+        kind: ViewerEngines[kind] ? kind : 'kicanvas',
+        label: definition.label,
+        ...(reason ? { reason } : {}),
+        capabilities: { ...definition.capabilities }
+      };
+    }
+
+    function setEngineState(kind, reason) {
+      setEngineUiState(kind, reason);
+      postViewerState();
+    }
+
+    function setEngineUiState(kind, reason) {
+      const engine = createEngineState(kind, reason);
+      localState = { ...localState, engine };
+      updateEngineUi(engine);
+    }
+
+    function updateEngineUi(engine) {
+      const nextEngine = engine || createEngineState('kicanvas');
+      if (engineBadgeEl) {
+        engineBadgeEl.textContent = nextEngine.label;
+        engineBadgeEl.dataset.engineKind = nextEngine.kind;
+        engineBadgeEl.title = nextEngine.reason || nextEngine.label;
+      }
+      if (engineSummaryEl) {
+        engineSummaryEl.textContent = nextEngine.reason || nextEngine.label;
+      }
+      setControlsForEngine(nextEngine);
+    }
+
+    function setControlsForEngine(engine) {
+      setControlDisabled(fitBtn, !engine.capabilities.fit);
+      setControlDisabled(zoomInBtn, !engine.capabilities.zoom);
+      setControlDisabled(zoomOutBtn, !engine.capabilities.zoom);
+      setControlDisabled(exportPngBtn, !engine.capabilities.exportPng);
+      setControlDisabled(exportSvgBtn, !engine.capabilities.exportSvg);
+      const layerControlsEnabled = Boolean(engine.capabilities.layers);
+      setControlDisabled(allLayersBtn, !layerControlsEnabled);
+      setControlDisabled(noneLayersBtn, !layerControlsEnabled);
+      setControlDisabled(copperLayersBtn, !layerControlsEnabled);
+    }
+
+    function setControlDisabled(control, disabled) {
+      if (!control) {
+        return;
+      }
+      control.disabled = Boolean(disabled);
+      control.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+    }
+
     function applyViewerState(viewer) {
       if (!payload.restoreState) {
         postViewerState();
         return;
       }
       viewer.setAttribute('theme', payload.restoreState.theme || payload.theme || 'kicad');
-      localState = payload.restoreState;
+      localState = {
+        ...payload.restoreState,
+        engine: localState.engine || payload.restoreState.engine
+      };
       updateSelectionSummary();
       postViewerState();
     }
@@ -1028,6 +1163,7 @@ export function createKiCanvasViewerHtml(
         return false;
       }
       showSvgFallback(svgText);
+      setEngineState('cli-svg-fallback', reason);
       setStatus('CLI SVG fallback loaded: ' + payload.fileName);
       return true;
     }

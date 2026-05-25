@@ -340,6 +340,70 @@ describe.each([
     });
   });
 
+  it('persists viewer engine diagnostics from viewer state messages', async () => {
+    const viewerState = new ViewerStateStore();
+    const provider = new (ContextProvider as never as {
+      new (
+        context: vscode.ExtensionContext,
+        svgFallbackProvider: undefined,
+        viewerState: ViewerStateStore
+      ): InstanceType<typeof ContextProvider>;
+    })(
+      {
+        extensionUri: vscode.Uri.file('/extension')
+      } as vscode.ExtensionContext,
+      undefined,
+      viewerState
+    );
+    const panel = createPanel();
+    const document = {
+      uri: vscode.Uri.file(tempFile)
+    } as vscode.CustomDocument;
+
+    await provider.resolveCustomEditor(
+      document,
+      panel as unknown as vscode.WebviewPanel
+    );
+    await panel.fireMessage({
+      type: 'viewerState',
+      payload: {
+        zoom: 1,
+        grid: false,
+        theme: 'kicad',
+        engine: {
+          kind: 'cli-svg-fallback',
+          label: 'CLI SVG fallback',
+          reason: 'KiCanvas created a blank render surface for this file.',
+          capabilities: {
+            interactive: false,
+            fit: true,
+            zoom: true,
+            exportPng: true,
+            exportSvg: true,
+            selection: false,
+            layers: false
+          }
+        }
+      }
+    });
+
+    expect(viewerState.getState(document.uri)).toEqual(
+      expect.objectContaining({
+        engine: expect.objectContaining({
+          kind: 'cli-svg-fallback',
+          label: 'CLI SVG fallback',
+          reason: expect.stringContaining('blank render surface'),
+          capabilities: expect.objectContaining({
+            fit: true,
+            zoom: true,
+            exportPng: true,
+            layers: false
+          })
+        })
+      })
+    );
+  });
+
   it('untracks panels when the webview is disposed', async () => {
     const provider = new ContextProvider({
       extensionUri: vscode.Uri.file('/extension')

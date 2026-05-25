@@ -892,6 +892,7 @@ export async function activate(
             )
           : undefined,
       visibleLayers: viewerState?.activeLayers,
+      viewerEngine: viewerState?.engine,
       activeVariant: await variantProvider.getActiveVariantName(),
       mcpConnected: mcpState?.connected ?? false,
       kicadVersion: cli?.version,

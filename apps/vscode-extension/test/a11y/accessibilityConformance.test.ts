@@ -46,6 +46,11 @@ type ThemeFixture = {
     buttonSecondaryText: string;
   };
 };
+type ViewerEngineFixture = {
+  kind: 'kicanvas' | 'cli-svg-fallback';
+  label: string;
+  reason?: string;
+};
 
 const axeOptions: RunOptions = {
   runOnly: {
@@ -190,6 +195,40 @@ describe('WCAG 2.1 AA webview conformance gate', () => {
         );
         expect(secondaryAction.borderRadius).toBeLessThanOrEqual(6);
       }
+    }
+  );
+
+  it.each([
+    {
+      kind: 'kicanvas',
+      label: 'KiCanvas'
+    },
+    {
+      kind: 'cli-svg-fallback',
+      label: 'CLI SVG fallback',
+      reason: 'KiCanvas created a blank render surface.'
+    }
+  ] satisfies ViewerEngineFixture[])(
+    'captures viewer engine visual state for %s',
+    async (engine) => {
+      const theme = themeFixtures()[0]!;
+      await page.emulateMedia(theme.media);
+      await page.setContent(
+        prepareForAxe(createViewerToolbarHtml(engine), theme.css),
+        {
+          waitUntil: 'domcontentloaded'
+        }
+      );
+
+      const badge = page.locator('#viewer-engine-badge');
+      await expect(badge.count()).resolves.toBe(1);
+      await expect(badge.textContent()).resolves.toContain(engine.label);
+      await expect(badge.getAttribute('data-engine-kind')).resolves.toBe(
+        engine.kind
+      );
+
+      const screenshot = await page.locator('header').screenshot();
+      expect(screenshot.length).toBeGreaterThan(1000);
     }
   );
 });
@@ -548,7 +587,7 @@ function themeFixtures(): ThemeFixture[] {
   ];
 }
 
-function createViewerToolbarHtml(): string {
+function createViewerToolbarHtml(engine?: ViewerEngineFixture): string {
   return createKiCanvasViewerHtml({
     title: 'KiCad Studio Schematic Viewer',
     fileName: 'demo.kicad_sch',
@@ -558,7 +597,38 @@ function createViewerToolbarHtml(): string {
     kicanvasUri: 'vscode-resource:/media/kicanvas/kicanvas.js',
     viewerCssUri: 'vscode-resource:/media/kicanvas/viewer.css',
     base64: Buffer.from('(kicad_sch)').toString('base64'),
-    disabledReason: ''
+    disabledReason: '',
+    ...(engine
+      ? {
+          initialEngine: {
+            kind: engine.kind,
+            label: engine.label,
+            ...(engine.reason ? { reason: engine.reason } : {}),
+            capabilities:
+              engine.kind === 'kicanvas'
+                ? {
+                    interactive: true,
+                    fit: true,
+                    zoom: true,
+                    exportPng: true,
+                    exportSvg: true,
+                    selection: true,
+                    layers: true
+                  }
+                : {
+                    interactive: false,
+                    fit: true,
+                    zoom: true,
+                    exportPng: true,
+                    exportSvg: true,
+                    selection: false,
+                    layers: false
+                  }
+          }
+        }
+      : {})
+  } as Parameters<typeof createKiCanvasViewerHtml>[0] & {
+    initialEngine?: unknown;
   });
 }
 

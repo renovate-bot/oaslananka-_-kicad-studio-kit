@@ -24,6 +24,10 @@ import {
   kicanvasUri,
   viewerCssUri
 } from './viewerHtml';
+import {
+  createViewerEngineState,
+  isViewerEngineKind
+} from './viewer/viewerEngine';
 
 const PROGRESS_INLINE_WARNING_BYTES = 1 * 1024 * 1024;
 const LARGE_FILE_METADATA_BYTES = 512 * 1024;
@@ -57,9 +61,7 @@ interface PanelInfo {
 type ViewerSvgFallbackProvider = (
   uri: vscode.Uri
 ) => Promise<string | undefined>;
-type ViewerProjectResolver = (
-  uri: vscode.Uri
-) => ProjectContext | undefined;
+type ViewerProjectResolver = (uri: vscode.Uri) => ProjectContext | undefined;
 
 /**
  * Shared custom editor provider for KiCanvas-backed viewers.
@@ -215,9 +217,9 @@ export abstract class BaseKiCanvasEditorProvider
           }
           if (message.type === 'viewerState') {
             const info = this.panelInfo.get(webviewPanel);
-              const nextState = readViewerState(message.payload);
-              if (info && nextState) {
-                info.state = nextState;
+            const nextState = readViewerState(message.payload);
+            if (info && nextState) {
+              info.state = nextState;
               this.viewerState.updateState(document.uri, info.state, {
                 project: this.resolveProject?.(document.uri)
               });
@@ -734,10 +736,12 @@ function readViewerState(value: unknown): ViewerState | undefined {
 
   const selectedArea = readSelectedArea(payload['selectedArea']);
   const activeLayers = readStringArray(payload['activeLayers']);
+  const engine = readViewerEngineState(payload['engine']);
   return {
     zoom,
     grid,
     theme,
+    ...(engine ? { engine } : {}),
     ...(typeof payload['selectedReference'] === 'string'
       ? { selectedReference: payload['selectedReference'] }
       : {}),
@@ -761,6 +765,15 @@ function readViewerSelection(value: unknown): Partial<ViewerState> {
     ...(selectedArea ? { selectedArea } : {}),
     ...(activeLayers ? { activeLayers } : {})
   };
+}
+
+function readViewerEngineState(value: unknown): ViewerState['engine'] {
+  const payload = asRecord(value);
+  if (!payload || !isViewerEngineKind(payload['kind'])) {
+    return undefined;
+  }
+  const reason = asString(payload['reason']);
+  return createViewerEngineState(payload['kind'], reason);
 }
 
 function readSelectedArea(value: unknown):

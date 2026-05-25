@@ -75,6 +75,52 @@ describe('createKiCanvasViewerHtml', () => {
     );
   });
 
+  it('models KiCanvas, CLI SVG fallback, and metadata-only engines in the viewer bootstrap', () => {
+    const html = createKiCanvasViewerHtml({
+      title: 'Viewer',
+      fileName: 'sample.kicad_sch',
+      fileType: 'schematic',
+      status: 'Opening interactive renderer...',
+      cspSource: 'vscode-resource:',
+      kicanvasUri: 'vscode-resource:/media/kicanvas/kicanvas.js',
+      base64: 'Zm9v',
+      disabledReason: ''
+    });
+
+    expect(html).toContain('id="viewer-engine-badge"');
+    expect(html).toContain('id="engine-summary"');
+    expect(html).toContain('data-engine-kind="kicanvas"');
+    expect(html).toContain("'cli-svg-fallback'");
+    expect(html).toContain("'metadata-only'");
+    expect(html).toContain('function setEngineState(kind, reason)');
+    expect(html).toContain('localState = { ...localState, engine };');
+    expect(html).toContain('function setControlsForEngine(engine)');
+    expect(html).toContain('setControlsForEngine(nextEngine);');
+  });
+
+  it('starts metadata-only mode with unsupported viewer controls disabled', () => {
+    const html = createKiCanvasViewerHtml({
+      title: 'Viewer',
+      fileName: 'oversized.kicad_pcb',
+      fileType: 'board',
+      status: 'Opening metadata preview...',
+      cspSource: 'vscode-resource:',
+      kicanvasUri: 'vscode-resource:/media/kicanvas/kicanvas.js',
+      base64: '',
+      disabledReason:
+        'Interactive render is disabled for files larger than 100 MB.'
+    });
+
+    expect(html).toContain('data-engine-kind="metadata-only"');
+    expect(html).toContain('Metadata only');
+    expect(html).toContain(
+      'setControlDisabled(fitBtn, !engine.capabilities.fit);'
+    );
+    expect(html).toContain(
+      'setControlDisabled(exportPngBtn, !engine.capabilities.exportPng);'
+    );
+  });
+
   it('supports exporting PNG from the SVG fallback surface', () => {
     const html = createKiCanvasViewerHtml({
       title: 'Viewer',
