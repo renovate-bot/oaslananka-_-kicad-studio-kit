@@ -48,6 +48,7 @@ export interface ViewerState {
   zoom: number;
   grid: boolean;
   theme: string;
+  engine?: ViewerEngineState | undefined;
   selectedReference?: string | undefined;
   selectedArea?:
     | {
@@ -58,6 +59,28 @@ export interface ViewerState {
       }
     | undefined;
   activeLayers?: string[] | undefined;
+}
+
+export type ViewerEngineKind =
+  | 'kicanvas'
+  | 'cli-svg-fallback'
+  | 'metadata-only';
+
+export interface ViewerEngineCapabilities {
+  interactive: boolean;
+  fit: boolean;
+  zoom: boolean;
+  exportPng: boolean;
+  exportSvg: boolean;
+  selection: boolean;
+  layers: boolean;
+}
+
+export interface ViewerEngineState {
+  kind: ViewerEngineKind;
+  label: string;
+  reason?: string | undefined;
+  capabilities: ViewerEngineCapabilities;
 }
 
 export interface ViewerInboundMessage {
@@ -426,6 +449,7 @@ export interface StudioContext {
     | undefined;
   activeSheetPath?: string | undefined;
   visibleLayers?: string[] | undefined;
+  viewerEngine?: ViewerEngineState | undefined;
   kicadVersion?: string | undefined;
   designBlocks?: string[] | undefined;
 }

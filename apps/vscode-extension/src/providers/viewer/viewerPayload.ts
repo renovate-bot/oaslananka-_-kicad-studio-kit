@@ -1,4 +1,9 @@
-import type { ViewerMetadata, ViewerState } from '../../types';
+import type {
+  ViewerEngineState,
+  ViewerMetadata,
+  ViewerState
+} from '../../types';
+import { createViewerEngineState } from './viewerEngine';
 
 export interface ViewerPayload {
   fileName: string;
@@ -7,11 +12,24 @@ export interface ViewerPayload {
   disabledReason: string;
   theme: string;
   fallbackBackground: string;
+  engine: ViewerEngineState;
   metadata?: ViewerMetadata | undefined;
   restoreState?: ViewerState | undefined;
 }
 
-export function createViewerPayload(options: ViewerPayload): ViewerPayload {
+export interface ViewerPayloadOptions extends Omit<ViewerPayload, 'engine'> {
+  initialEngine?: ViewerEngineState | undefined;
+}
+
+export function createViewerPayload(
+  options: ViewerPayloadOptions
+): ViewerPayload {
+  const engine =
+    options.initialEngine ??
+    createViewerEngineState(
+      options.disabledReason ? 'metadata-only' : 'kicanvas',
+      options.disabledReason || undefined
+    );
   return {
     fileName: options.fileName,
     fileType: options.fileType,
@@ -19,6 +37,7 @@ export function createViewerPayload(options: ViewerPayload): ViewerPayload {
     disabledReason: options.disabledReason,
     theme: options.theme,
     fallbackBackground: options.fallbackBackground,
+    engine,
     ...(options.metadata ? { metadata: options.metadata } : {}),
     ...(options.restoreState ? { restoreState: options.restoreState } : {})
   };

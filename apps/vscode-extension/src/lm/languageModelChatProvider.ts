@@ -204,6 +204,7 @@ function buildStudioContextSummary(context: StudioContext): string {
       cursorPosition: context.cursorPosition,
       activeSheetPath: context.activeSheetPath,
       visibleLayers: context.visibleLayers,
+      viewerEngine: context.viewerEngine,
       drcErrors: context.drcErrors.slice(0, 20)
     },
     null,

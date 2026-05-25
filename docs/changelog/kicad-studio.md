@@ -4,6 +4,9 @@ Source: `apps/vscode-extension/CHANGELOG.md`
 
 ## [Unreleased]
 
+- Add explicit KiCanvas/CLI SVG fallback/metadata-only viewer engine state,
+  toolbar engine badges, unsupported-control disabling, and regression coverage
+  for fallback diagnostics.
 - Restyle the KiCanvas viewer toolbar with VS Code theme tokens, compact
   spacing, and a single primary reload action for dark, light, and high-contrast
   themes.

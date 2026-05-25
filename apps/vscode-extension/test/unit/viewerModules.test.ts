@@ -26,8 +26,37 @@ describe('viewer helper modules', () => {
     ).toEqual(
       expect.objectContaining({
         fileName: 'board.kicad_pcb',
+        engine: expect.objectContaining({
+          kind: 'kicanvas',
+          capabilities: expect.objectContaining({ interactive: true })
+        }),
         metadata: expect.objectContaining({ layers: expect.any(Array) }),
         restoreState: expect.objectContaining({ zoom: 2 })
+      })
+    );
+  });
+
+  it('marks oversized viewer payloads as metadata-only with safe capabilities', () => {
+    expect(
+      createViewerPayload({
+        fileName: 'large-board.kicad_pcb',
+        fileType: 'board',
+        base64: '',
+        disabledReason: 'Interactive render is disabled for large files.',
+        theme: 'kicad',
+        fallbackBackground: '#001023'
+      }).engine
+    ).toEqual(
+      expect.objectContaining({
+        kind: 'metadata-only',
+        label: 'Metadata only',
+        reason: 'Interactive render is disabled for large files.',
+        capabilities: expect.objectContaining({
+          fit: false,
+          zoom: false,
+          exportPng: false,
+          exportSvg: true
+        })
       })
     );
   });
