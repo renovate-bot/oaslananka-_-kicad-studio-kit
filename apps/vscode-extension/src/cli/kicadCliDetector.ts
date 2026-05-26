@@ -9,6 +9,24 @@ import { normalizeUserPath } from '../utils/pathUtils';
 
 const SYNC_PROBE_TIMEOUT_MS = 5_000;
 const SYNC_PROBE_MAX_BUFFER = 1024 * 1024;
+const STATUS_MENU_CAPABILITY_COMMANDS = [
+  'drc',
+  'erc',
+  'bom',
+  'netlist',
+  'gerbers',
+  'drill',
+  'jobset',
+  'pdf3d',
+  'odb'
+] as const satisfies ReadonlyArray<keyof typeof CLI_CAPABILITY_COMMANDS>;
+
+export type KiCadCliCapabilityName = keyof typeof CLI_CAPABILITY_COMMANDS;
+export type KiCadCliCapabilitySnapshot = Partial<
+  Record<KiCadCliCapabilityName, boolean>
+> & {
+  variantOption?: boolean;
+};
 
 export function getCliCandidates(
   platform = process.platform,
@@ -227,6 +245,29 @@ export class KiCadCliDetector {
     const normalized = supported ? help : undefined;
     this.helpCache.set(key, normalized);
     return normalized;
+  }
+
+  async getCapabilitySnapshot(): Promise<
+    KiCadCliCapabilitySnapshot | undefined
+  > {
+    const detected = await this.detect();
+    if (!detected) {
+      return undefined;
+    }
+
+    const [commandResults, variantOption] = await Promise.all([
+      Promise.all(
+        STATUS_MENU_CAPABILITY_COMMANDS.map(
+          async (command) =>
+            [command, await this.hasCapability(command)] as const
+        )
+      ),
+      this.commandHelpIncludes(['sch', 'export', 'pdf'], /--variant\b/)
+    ]);
+    return {
+      ...(Object.fromEntries(commandResults) as KiCadCliCapabilitySnapshot),
+      variantOption
+    };
   }
 
   private async validateCandidate(
