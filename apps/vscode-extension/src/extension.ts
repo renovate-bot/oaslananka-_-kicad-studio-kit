@@ -568,6 +568,10 @@ export async function activate(
     const provider = await aiProviders.getProvider();
     const cli = trusted ? await cliDetector.detect() : undefined;
     const kicadVersionMajor = Number(cli?.version.split('.')[0] ?? '0');
+    const allegroImportSupported =
+      trusted && cli
+        ? await importService.isImportFormatSupported('allegro')
+        : false;
     const hasVariants = await workspaceHasVariants();
     const mcpProfile = readConfiguredMcpProfile();
     const persistedProjectId = context.workspaceState.get<string>(
@@ -621,6 +625,11 @@ export async function activate(
       'setContext',
       CONTEXT_KEYS.hasVariants,
       projectSnapshot.hasVariants
+    );
+    await vscode.commands.executeCommand(
+      'setContext',
+      CONTEXT_KEYS.allegroImportSupported,
+      allegroImportSupported
     );
     await vscode.commands.executeCommand(
       'setContext',
