@@ -140,6 +140,26 @@ describe('KiCadImportService', () => {
     });
   });
 
+  it('fails closed when an import support snapshot probe rejects', async () => {
+    const error = new Error('probe failed');
+    const { service, logger } = createService({
+      detector: {
+        hasCapability: jest.fn().mockRejectedValue(error),
+        getCommandHelp: jest.fn()
+      }
+    });
+
+    await expect(
+      service.getImportFormatSupportSnapshot(['allegro'])
+    ).resolves.toEqual({
+      allegro: false
+    });
+    expect(logger.error).toHaveBeenCalledWith(
+      'Import support probe for allegro failed',
+      error
+    );
+  });
+
   it('stops without running kicad-cli when the import picker is cancelled', async () => {
     const { service, runner } = createService();
     (window.showOpenDialog as jest.Mock).mockResolvedValue(undefined);

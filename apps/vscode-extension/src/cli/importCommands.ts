@@ -103,10 +103,14 @@ export class KiCadImportService {
     formats: readonly SupportedPcbImportFormat[] = PCB_IMPORT_FORMATS
   ): Promise<Partial<Record<SupportedPcbImportFormat, boolean>>> {
     const entries = await Promise.all(
-      formats.map(async (format) => [
-        format,
-        await this.isImportFormatSupported(format)
-      ] as const)
+      formats.map(async (format) => {
+        try {
+          return [format, await this.isImportFormatSupported(format)] as const;
+        } catch (error) {
+          this.logger.error(`Import support probe for ${format} failed`, error);
+          return [format, false] as const;
+        }
+      })
     );
     return Object.fromEntries(entries);
   }
