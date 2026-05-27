@@ -5,7 +5,7 @@ import {
 } from '../../src/cli/kicadCliSupport';
 
 describe('kicadCliSupport', () => {
-  it('classifies the supported KiCad 8, 9, and 10 support lines', () => {
+  it('classifies current KiCad lifecycle support lines', () => {
     expect(parseKiCadMajor({ version: '10.0.3' })).toBe(10);
     expect(
       describeKiCadSupportLine({
@@ -18,7 +18,7 @@ describe('kicadCliSupport', () => {
         version: '9.0.9',
         versionLabel: 'KiCad 9.0.9'
       }).state
-    ).toBe('supported');
+    ).toBe('deprecated');
     expect(
       describeKiCadSupportLine({
         version: '8.0.8',

@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Mark KiCad 9.x as a deprecated best-effort compatibility line in status
+  surfaces now that upstream active maintenance has ended.
 - Surface KiCad 8.x, 9.x, and 10.0.x compatibility state in the status
   bar/menu with feature-level capability probe results.
 - Clarify Codex support as an external MCP client workflow, remove it from the

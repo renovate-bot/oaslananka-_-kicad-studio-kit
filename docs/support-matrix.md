@@ -26,7 +26,7 @@ Machine-maintained from `compatibility.yaml`. Refresh with
 | Range | State | CI | Notes |
 | --- | --- | --- | --- |
 | 10.0.x | primary | required | Primary optimized KiCad CLI and file-format target. |
-| 9.x | supported | scheduled | Core PCB, schematic, validation, and export workflows remain supported. |
+| 9.x | deprecated | scheduled | Upstream KiCad 9.x is no longer actively maintained; core workflows remain best-effort while scheduled canaries gather removal evidence. |
 | 8.x | deprecated | manual | File-level read and migration support only; removal requires a release note. |
 
 ### Product Versions
@@ -54,12 +54,12 @@ extension features. The runtime checks intentionally probe CLI command help
 before running commands; a version line alone is not enough to enable advanced
 exports.
 
-| KiCad line | Tested patch | Support state | Required validation                         | Extension feature state                                                                                                                                                                     |
-| ---------- | ------------ | ------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 10.0.x     | 10.0.3       | Primary       | Required release gate and KiCad canary lane | Core DRC/ERC, BOM/netlist, Gerbers/drill, jobsets, design variants, 3D PDF, and ODB++ are supported when command probes pass.                                                               |
-| 9.x        | 9.0.9        | Supported     | Scheduled KiCad canary lane                 | Core DRC/ERC, BOM/netlist, Gerbers/drill, jobsets, ODB++, and manufacturing package workflows are supported when command probes pass; KiCad 10-only variants and 3D PDF remain unavailable. |
-| 8.x        | 8.0.x        | Deprecated    | Manual compatibility check                  | Core file-level read, migration, DRC/ERC, BOM/netlist, and Gerber workflows are best-effort when command probes pass; jobsets, variants, 3D PDF, and ODB++ remain unavailable.              |
-| <8         | none         | Unsupported   | None                                        | KiCad Studio reports the detected CLI as unsupported and does not claim feature compatibility.                                                                                              |
+| KiCad line | Tested patch | Support state | Required validation                         | Extension feature state                                                                                                                                                                          |
+| ---------- | ------------ | ------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 10.0.x     | 10.0.3       | Primary       | Required release gate and KiCad canary lane | Core DRC/ERC, BOM/netlist, Gerbers/drill, jobsets, design variants, 3D PDF, and ODB++ are supported when command probes pass.                                                                    |
+| 9.x        | 9.0.9        | Deprecated    | Scheduled non-blocking KiCad canary lane    | Core DRC/ERC, BOM/netlist, Gerbers/drill, jobsets, ODB++, and manufacturing package workflows remain best-effort when command probes pass; KiCad 10-only variants and 3D PDF remain unavailable. |
+| 8.x        | 8.0.x        | Deprecated    | Manual compatibility check                  | Core file-level read, migration, DRC/ERC, BOM/netlist, and Gerber workflows are best-effort when command probes pass; jobsets, variants, 3D PDF, and ODB++ remain unavailable.                   |
+| <8         | none         | Unsupported   | None                                        | KiCad Studio reports the detected CLI as unsupported and does not claim feature compatibility.                                                                                                   |
 
 ## KiCad 11 Readiness
 
@@ -82,13 +82,19 @@ Status surfaces:
 - The status bar shows the detected KiCad support line and warns on deprecated or unsupported CLIs.
 - The `KiCad Studio Commands` status menu lists feature-level availability with precise unsupported reasons.
 - Advanced commands such as ODB++ and 3D PDF export require both their documented KiCad line and a successful `kicad-cli` capability probe.
+- KiCad 9.x remains in feature gates for migration compatibility, but status
+  surfaces label it deprecated because upstream active maintenance ended after
+  KiCad 10.0.0.
 - KiCad 10.0.3 patch-specific regression coverage is tracked by
   [`kicad-10-0-3-regressions`](kicad-fixture-corpus.md#fixture-coverage).
 
-Freshness sources checked on 2026-05-26:
+Freshness sources checked on 2026-05-27:
 
 - KiCad 10.0.3 release notes: <https://www.kicad.org/blog/2026/05/KiCad-10.0.3-Release/>
+- KiCad 10.0.3 GitHub release tag: <https://github.com/KiCad/kicad-source-mirror/releases/tag/10.0.3>
+- KiCad 10.0.0 GitHub release note for KiCad 9.x active-maintenance EOL: <https://github.com/KiCad/kicad-source-mirror/releases/tag/10.0.0>
 - KiCad 9.0.9 release notes: <https://www.kicad.org/blog/2026/04/KiCad-9.0.9-Release/>
+- KiCad 9.0.9 RC note for final 9.0 bug-fix policy: <https://www.kicad.org/blog/2026/04/KiCad-Version-9.0.9-Release-Candidate-1-Available/>
 - KiCad 10.0 CLI reference: <https://docs.kicad.org/10.0/en/cli/cli.html>
 - KiCad nightly CLI reference: <https://docs.kicad.org/master/en/cli/cli.html>
 - KiCad PCB Python bindings deprecation notice: <https://dev-docs.kicad.org/en/apis-and-binding/pcbnew/>
@@ -109,7 +115,7 @@ Freshness sources checked on 2026-05-26:
 
 | Surface      | Primary    | Supported              | Deprecated | Gate                                     |
 | ------------ | ---------- | ---------------------- | ---------- | ---------------------------------------- |
-| KiCad        | 10.0.x     | 9.x                    | 8.x        | `compatibility.yaml` + release preflight |
+| KiCad        | 10.0.x     | none                   | 9.x, 8.x   | `compatibility.yaml` + release preflight |
 | VS Code      | current    | `engines.vscode` 1.120 | none       | extension manifest + VS Code canary      |
 | MCP protocol | 2025-11-25 | 2025-11-25             | older      | well-known server card + matrix          |
 | Node         | 24.x       | `>=24.11.0 <25`        | older      | root and extension package metadata      |
@@ -141,8 +147,8 @@ Python:
 
 KiCad:
 
-- `compatibility.yaml` declares the primary KiCad line, supported previous line, deprecated line,
-  and latest verified patch release.
+- `compatibility.yaml` declares the primary KiCad line, deprecated previous lines,
+  upstream EOL annotations, and latest verified patch release.
 - The primary KiCad line should match the official current stable line once the canary lane is
   green.
 - Lowering the primary line or widening support back to an older line requires both product

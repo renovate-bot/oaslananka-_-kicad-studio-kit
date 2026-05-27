@@ -24,6 +24,8 @@ REQUIRED_IPC_AREAS = (
     "export",
     "diagnostics",
 )
+KICAD_SUPPORT_STATES = {"primary", "supported", "deprecated"}
+KICAD_CI_MODES = {"required", "scheduled", "manual"}
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -170,10 +172,51 @@ def _validate_required_shape(matrix: dict[str, Any]) -> list[str]:
     return errors
 
 
+def _validate_kicad_support_policy(matrix: dict[str, Any]) -> list[str]:
+    kicad = matrix.get("kicad")
+    if not isinstance(kicad, dict):
+        return ["compatibility.yaml kicad must be a mapping"]
+    primary = kicad.get("primary")
+    if not isinstance(primary, str) or not primary:
+        return ["compatibility.yaml kicad.primary must be a non-empty string"]
+    entries = kicad.get("supported")
+    if not isinstance(entries, list) or not entries:
+        return ["compatibility.yaml kicad.supported must be a non-empty list"]
+
+    errors: list[str] = []
+    primary_entries = 0
+    for index, entry in enumerate(entries):
+        label = f"kicad.supported[{index}]"
+        if not isinstance(entry, dict):
+            errors.append(f"{label} must be a mapping")
+            continue
+        kicad_range = entry.get("range")
+        state = entry.get("state")
+        ci_mode = entry.get("ci")
+        if not isinstance(kicad_range, str) or not kicad_range:
+            errors.append(f"{label}.range must be a non-empty string")
+        if state not in KICAD_SUPPORT_STATES:
+            errors.append(f"{label}.state must be one of {sorted(KICAD_SUPPORT_STATES)!r}")
+        if ci_mode not in KICAD_CI_MODES:
+            errors.append(f"{label}.ci must be one of {sorted(KICAD_CI_MODES)!r}")
+        if not isinstance(entry.get("notes"), str) or not entry["notes"]:
+            errors.append(f"{label}.notes must be a non-empty string")
+        if entry.get("upstreamEol") is True and state != "deprecated":
+            errors.append(f"{label} marks upstreamEol but is not deprecated")
+        if kicad_range == primary:
+            primary_entries += 1
+            if state != "primary" or ci_mode != "required":
+                errors.append(f"{label} must be primary and required for {primary!r}")
+    if primary_entries != 1:
+        errors.append(f"kicad.supported must contain exactly one primary entry for {primary!r}")
+    return errors
+
+
 def validate_compatibility_matrix() -> list[str]:
     """Return compatibility drift errors without exiting."""
     matrix = _read_yaml(REPO_ROOT / "compatibility.yaml")
     errors = _validate_required_shape(matrix)
+    errors.extend(_validate_kicad_support_policy(matrix))
     if errors:
         return errors
 

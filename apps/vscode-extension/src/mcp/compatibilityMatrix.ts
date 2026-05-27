@@ -3,7 +3,7 @@ export const COMPATIBILITY_MATRIX = {
   kicad: {
     primary: '10.0.x',
     supported: ['10.0.x', '9.x', '8.x'],
-    deprecated: ['8.x']
+    deprecated: ['9.x', '8.x']
   },
   mcp: {
     protocolVersion: '2025-11-25',

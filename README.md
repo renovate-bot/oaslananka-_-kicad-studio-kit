@@ -28,8 +28,8 @@ All release surfaces are pinned to `1.0.0`:
 ## KiCad Compatibility
 
 KiCad Studio Kit treats KiCad `10.0.x` as the primary tested line, keeps KiCad
-`9.x` as a supported previous line, and keeps KiCad `8.x` as deprecated
-file-level compatibility. The canonical matrix, tested patch versions, CI
+`9.x` as deprecated best-effort compatibility after upstream EOL, and keeps
+KiCad `8.x` as deprecated file-level compatibility. The canonical matrix, tested patch versions, CI
 coverage level, and feature gates are maintained in
 [docs/support-matrix.md](docs/support-matrix.md) and `compatibility.yaml`.
 
