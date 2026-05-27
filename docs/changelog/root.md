@@ -2,6 +2,27 @@
 
 Source: `CHANGELOG.md`
 
-## 1.0.0
+All notable changes to the KiCad Studio Kit monorepo will be documented in this
+file.
 
-- Establish the canonical KiCad Studio Kit monorepo baseline.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and released packages in this repository adhere to
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html). The root changelog
+records repository-wide release governance and monorepo changes; product
+changelogs remain the release-owned sources for package-specific changes.
+
+Comparison links will be added after the first public release tags are
+published.
+
+## [Unreleased]
+
+### Changed
+
+- Normalized the root and product changelog sources to Keep a Changelog 1.1.0
+  structure so release evidence and generated docs can be audited consistently.
+
+## [1.0.0] - 2026-05-20
+
+### Added
+
+- Established the canonical KiCad Studio Kit monorepo baseline.
