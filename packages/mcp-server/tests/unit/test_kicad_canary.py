@@ -20,7 +20,8 @@ def _compatibility_matrix() -> dict[str, object]:
                 },
                 {
                     "range": "9.x",
-                    "state": "supported",
+                    "state": "deprecated",
+                    "upstreamEol": True,
                     "ci": "scheduled",
                 },
                 {
@@ -41,7 +42,7 @@ def _compatibility_matrix() -> dict[str, object]:
     }
 
 
-def test_kicad_canary_matrix_uses_scheduled_compatibility_lanes() -> None:
+def test_kicad_canary_matrix_uses_scheduled_non_blocking_deprecated_lanes() -> None:
     matrix = build_canary_matrix(_compatibility_matrix(), include_manual=False)
 
     assert matrix == {
@@ -68,15 +69,15 @@ def test_kicad_canary_matrix_uses_scheduled_compatibility_lanes() -> None:
                 "continue_on_error": False,
             },
             {
-                "id": "kicad-9-supported-linux",
+                "id": "kicad-9-deprecated-linux",
                 "range": "9.x",
-                "state": "supported",
+                "state": "deprecated",
                 "ci": "scheduled",
                 "os": "ubuntu-24.04",
                 "install": "apt-ppa",
                 "ppa": "ppa:kicad/kicad-9.0-releases",
                 "package": "kicad",
-                "continue_on_error": False,
+                "continue_on_error": True,
             },
             {
                 "id": "kicad-10-nightly-linux",

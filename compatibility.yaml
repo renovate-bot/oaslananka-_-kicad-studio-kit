@@ -1,8 +1,11 @@
 schemaVersion: 1
-updated: "2026-05-26"
+updated: "2026-05-27"
 source: "https://github.com/oaslananka/kicad-studio-kit"
 
 kicad:
+  # latestVerified must point to a published KiCad stable release confirmed by
+  # the official KiCad release notes and the KiCad/kicad-source-mirror release
+  # tag. Do not forward-reference patch numbers before both sources exist.
   primary: "10.0.x"
   latestVerified: "10.0.3"
   supported:
@@ -10,10 +13,16 @@ kicad:
       state: "primary"
       ci: "required"
       notes: "Primary optimized KiCad CLI and file-format target."
+    # Upstream ended active KiCad 9.x maintenance after KiCad 10.0.0 and
+    # described 9.0.9 as the final 9.0 bug-fix release. Keep this line in
+    # scheduled, non-blocking canaries until removal is announced in the next
+    # minor release.
     - range: "9.x"
-      state: "supported"
+      state: "deprecated"
+      upstreamEol: true
       ci: "scheduled"
-      notes: "Core PCB, schematic, validation, and export workflows remain supported."
+      removal: "next-minor-release"
+      notes: "Upstream KiCad 9.x is no longer actively maintained; core workflows remain best-effort while scheduled canaries gather removal evidence."
     - range: "8.x"
       state: "deprecated"
       ci: "manual"

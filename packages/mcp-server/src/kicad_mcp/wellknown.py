@@ -57,7 +57,7 @@ def get_wellknown_metadata() -> dict[str, object]:
         "serverInfoContract": get_server_info_contract(probe_live_context=False),
         "compatibility": compatibility_summary(),
         "kicad_version_required": (
-            "10.0.x primary, 9.x supported, 8.x deprecated file-level fallback"
+            "10.0.x primary, 9.x deprecated best-effort, 8.x deprecated file-level fallback"
         ),
         "docs": "https://oaslananka.github.io/kicad-studio-kit",
         "registry": "io.github.oaslananka/kicad-mcp-pro",

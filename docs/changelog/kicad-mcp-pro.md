@@ -4,6 +4,8 @@ Source: `packages/mcp-server/CHANGELOG.md`
 
 ## [Unreleased]
 
+- Mark KiCad 9.x as a deprecated best-effort compatibility line in MCP
+  discovery metadata while retaining scheduled non-blocking canary coverage.
 - Add `kicad-mcp-pro doctor`, JSON diagnostics, and redacted support bundles for
   setup troubleshooting.
 - Add real KiCad CLI contract canaries with shared fixtures, Windows primary

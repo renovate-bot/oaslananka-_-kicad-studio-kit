@@ -75,10 +75,10 @@ export function describeKiCadSupportLine(
   }
   if (major === 9) {
     return {
-      state: 'supported',
-      label: `${cli.versionLabel} supported`,
+      state: 'deprecated',
+      label: `${cli.versionLabel} deprecated`,
       detail:
-        'Supported previous KiCad line; covered by scheduled compatibility checks.'
+        'Deprecated KiCad line; upstream active maintenance ended after KiCad 10.0.0.'
     };
   }
   if (major === 8) {
