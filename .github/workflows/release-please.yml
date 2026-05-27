@@ -68,6 +68,25 @@ jobs:
 
             corepack enable
             corepack pnpm install --frozen-lockfile
+            # Release Please branches can lag main; match uv to the branch pin before syncing.
+            branch_uv_version="$(sed -nE 's/^required-version[[:space:]]*=[[:space:]]*"([^"]+)".*$/\1/p' packages/mcp-server/uv.toml)"
+            if [ -z "${branch_uv_version}" ]; then
+              echo "Unable to read required uv version from packages/mcp-server/uv.toml" >&2
+              exit 1
+            fi
+
+            current_uv_version="$(uv --version | awk '{print $2}')"
+            if [ "${current_uv_version}" != "${branch_uv_version}" ]; then
+              curl -LsSf "https://astral.sh/uv/${branch_uv_version}/install.sh" | sh
+              export PATH="${HOME}/.local/bin:${PATH}"
+            fi
+
+            actual_uv_version="$(uv --version | awk '{print $2}')"
+            if [ "${actual_uv_version}" != "${branch_uv_version}" ]; then
+              echo "Expected uv ${branch_uv_version}, found ${actual_uv_version}" >&2
+              exit 1
+            fi
+
             uv sync --all-extras --frozen --project packages/mcp-server
             corepack pnpm --dir packages/mcp-server run metadata:sync
 
