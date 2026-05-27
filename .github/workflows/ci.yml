@@ -102,12 +102,19 @@ jobs:
           echo "KICADSTUDIO_PLAYWRIGHT_CHANNEL=chrome" >> "$GITHUB_ENV"
       - if: runner.os == 'macOS'
         run: corepack pnpm --filter kicadstudio exec playwright install chromium
-      - name: Install Playwright Chromium shell
+      - name: Use runner Chrome for Playwright Windows tests
         if: runner.os == 'Windows'
-        timeout-minutes: 15
-        env:
-          PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT: "120000"
-        run: corepack pnpm --filter kicadstudio exec playwright install --only-shell chromium
+        shell: pwsh
+        run: |
+          $chromePath = (Get-Command chrome.exe -ErrorAction SilentlyContinue).Source
+          if (-not $chromePath) {
+            $chromePath = Join-Path $env:ProgramFiles "Google\Chrome\Application\chrome.exe"
+          }
+          if (-not (Test-Path $chromePath)) {
+            throw "Google Chrome is not available on this Windows runner."
+          }
+          & $chromePath --version
+          "KICADSTUDIO_PLAYWRIGHT_CHANNEL=chrome" >> $env:GITHUB_ENV
       - run: corepack pnpm --filter kicadstudio run test:webview
       - run: corepack pnpm --filter kicadstudio run test:a11y
       - run: corepack pnpm --filter kicadstudio run build
