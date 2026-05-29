@@ -29,7 +29,17 @@ _READ_ONLY_PREFIXES = (
     "run_drc",
     "run_erc",
     "kicad_get_",
+    "kicad_help",
+    "kicad_list_",
+    "kicad_scan_",
     "project_get_",
+    "drc_list_",
+    "lib_get_",
+    "lib_list_",
+    "lib_recommend_",
+    "lib_check_",
+    "lib_find_",
+    "mfg_check_",
 )
 _WRITE_PREFIXES = (
     "add_",
@@ -121,6 +131,14 @@ def infer_tool_annotations(
     metadata = get_tool_metadata(tool_name) or ToolMetadata()
     normalized = tool_name.casefold()
 
+    is_read_only = (
+        normalized.startswith(_READ_ONLY_PREFIXES)
+        or normalized.startswith("lib_search_")
+        or normalized.startswith("pcb_get_")
+        or normalized.startswith("sch_get_")
+        or normalized.endswith("_quality_gate")
+    )
+
     is_write = (
         normalized.startswith(_WRITE_PREFIXES)
         or any(
@@ -134,6 +152,8 @@ def infer_tool_annotations(
                 "_route_",
                 "_set_",
                 "_update_",
+                "_export_",
+                "_import_",
             )
         )
         or any(
@@ -148,14 +168,7 @@ def infer_tool_annotations(
                 "commit_checkpoint",
             )
         )
-    )
-    is_read_only = not is_write and (
-        normalized.startswith(_READ_ONLY_PREFIXES)
-        or normalized.startswith("lib_search_")
-        or normalized.startswith("pcb_get_")
-        or normalized.startswith("sch_get_")
-        or normalized.endswith("_quality_gate")
-    )
+    ) and not is_read_only
 
     annotations: dict[str, object] = {}
     if is_read_only:
