@@ -518,6 +518,10 @@ async def test_run_erc_flattens_sheet_violations(sample_project, monkeypatch) ->
 @pytest.mark.anyio
 async def test_project_quality_gate_reports_failures(sample_project, monkeypatch) -> None:
     monkeypatch.setattr(
+        "kicad_mcp.tools.validation._is_project_empty",
+        lambda: False,
+    )
+    monkeypatch.setattr(
         "kicad_mcp.tools.validation._run_erc_report",
         lambda _report_name: (
             sample_project / "output" / "schematic_quality_gate.json",

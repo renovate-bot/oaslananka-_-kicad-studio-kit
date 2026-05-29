@@ -239,6 +239,7 @@ function serverInfoFixture() {
       ipcEndpointSource: "default",
       livePcbContext: true,
       liveSchematicContext: false,
+      ipcDocumentLoaded: true,
     },
     operatingMode: {
       active: "readonly",

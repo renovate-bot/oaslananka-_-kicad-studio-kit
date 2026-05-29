@@ -78,7 +78,8 @@ function wellKnownServerInfoResult() {
         ipcMajorVersion: null,
         ipcEndpointSource: 'default',
         livePcbContext: false,
-        liveSchematicContext: false
+        liveSchematicContext: false,
+        ipcDocumentLoaded: false
       },
       operatingMode: {
         active: 'readonly',

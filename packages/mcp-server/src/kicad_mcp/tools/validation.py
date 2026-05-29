@@ -1359,11 +1359,66 @@ def _evaluate_manufacturing_gate(
     )
 
 
+def _is_project_empty() -> bool:
+    from .board_file import _edge_cuts_bounds, _parse_board_footprint_blocks
+    from .schematic import parse_schematic_file, project_schematic_files
+
+    # Check schematic
+    try:
+        sch_files = project_schematic_files()
+        if sch_files:
+            for sch_file in sch_files:
+                if sch_file.exists():
+                    data = parse_schematic_file(sch_file)
+                    if (
+                        data.get("symbols")
+                        or data.get("power_symbols")
+                        or data.get("wires")
+                        or data.get("labels")
+                    ):
+                        return False
+    except Exception:  # noqa: S110
+        pass
+
+    # Check PCB
+    try:
+        pcb_file = _get_pcb_file()
+        if pcb_file.exists():
+            content = pcb_file.read_text(encoding="utf-8", errors="ignore")
+            footprints = _parse_board_footprint_blocks(content)
+            if footprints:
+                return False
+            if _edge_cuts_bounds(content) is not None:
+                return False
+    except Exception:  # noqa: S110
+        pass
+
+    return True
+
+
+def _empty_project_onboarding_outcome() -> GateOutcome:
+    return GateOutcome(
+        name="Project Onboarding",
+        status="EMPTY",
+        summary="Your KiCad Studio project is currently empty or newly created.",
+        details=[
+            "Suggested Onboarding Steps:",
+            "1. Define your design intent by calling the 'project_set_design_intent' tool.",
+            "2. Add schematic symbols, connect them with wires, and add labels.",
+            "3. Place components onto the PCB and define the board outline.",
+            "4. Re-run project_quality_gate to see your progress!",
+        ],
+    )
+
+
 def _evaluate_project_gate(
     *,
     manufacturer: str | None = None,
     tier: str | None = None,
 ) -> list[GateOutcome]:
+    if _is_project_empty():
+        return [_empty_project_onboarding_outcome()]
+
     return [
         _evaluate_schematic_gate(),
         _evaluate_schematic_connectivity_gate(),
