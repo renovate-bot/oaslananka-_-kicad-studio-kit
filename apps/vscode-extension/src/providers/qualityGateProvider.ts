@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { COMMANDS } from '../constants';
+
 import type {
   McpConnectionState,
   QualityGateResult,
@@ -85,11 +85,12 @@ export class QualityGateProvider implements vscode.TreeDataProvider<QualityGateE
     item.tooltip = tooltipForGate(gate);
     item.contextValue = `qualityGate-${gate.status.toLowerCase()}`;
     item.iconPath = new vscode.ThemeIcon(iconForStatus(gate.status));
-    item.command = {
-      command: COMMANDS.qualityGateRunThis,
-      title: localize('qualityGateRunThis'),
-      arguments: [gate]
-    };
+
+    // Intentionally removed item.command here to separate click action
+    // from standard treeview expansion. We rely on package.json inline commands
+    // "Run This Quality Gate" and "Open Documentation" to expose the actions.
+    // This avoids mixing documentation links with executable gate actions on click.
+
     return item;
   }
 
@@ -203,12 +204,8 @@ export class QualityGateProvider implements vscode.TreeDataProvider<QualityGateE
     await vscode.window.showTextDocument(document);
   }
 
-  async openDocs(): Promise<void> {
-    await vscode.env.openExternal(
-      vscode.Uri.parse(
-        'https://oaslananka.github.io/kicad-studio-kit/workflows/manufacturing-export/'
-      )
-    );
+  async openDocs(gate?: QualityGateResult): Promise<void> {
+    await vscode.env.openExternal(vscode.Uri.parse(qualityGateDocsUrl(gate)));
   }
 
   private async persist(): Promise<void> {
@@ -302,6 +299,8 @@ function tooltipForGate(gate: QualityGateResult): string {
   const lines = [
     `${gate.label}: ${gate.status}`,
     gate.summary,
+    'Primary action: Run gate.',
+    'Secondary action: Open docs.',
     gate.lastRun
       ? `Last run: ${formatTimestamp(gate.lastRun)}`
       : 'Last run: never',
@@ -318,6 +317,14 @@ function tooltipForGate(gate: QualityGateResult): string {
   return lines.join('\n');
 }
 
+function qualityGateDocsUrl(gate: QualityGateResult | undefined): string {
+  const base = 'https://oaslananka.github.io/kicad-studio-kit';
+  if (!gate || gate.id.includes('manufacturing')) {
+    return `${base}/workflows/manufacturing-export/`;
+  }
+  return `${base}/extension/`;
+}
+
 function iconForStatus(status: QualityGateStatus): string {
   switch (status) {
     case 'PASS':
@@ -327,6 +334,8 @@ function iconForStatus(status: QualityGateStatus): string {
     case 'FAIL':
     case 'BLOCKED':
       return 'error';
+    case 'EMPTY':
+      return 'info';
     case 'PENDING':
       return 'play-circle';
   }
@@ -338,7 +347,8 @@ function orderGates(gates: QualityGateResult[]): QualityGateResult[] {
     BLOCKED: 1,
     WARN: 2,
     PENDING: 3,
-    PASS: 4
+    PASS: 4,
+    EMPTY: 5
   };
   return [...gates].sort(
     (a, b) =>
@@ -347,6 +357,7 @@ function orderGates(gates: QualityGateResult[]): QualityGateResult[] {
       a.label.localeCompare(b.label)
   );
 }
+
 
 function defaultGateOrder(id: string): number {
   const index = DEFAULT_GATES.findIndex((gate) => gate.id === id);

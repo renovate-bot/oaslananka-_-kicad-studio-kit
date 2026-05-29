@@ -93,6 +93,7 @@ export interface McpServerInfoContract {
     ipcEndpointSource: "config" | "environment" | "default";
     livePcbContext: boolean;
     liveSchematicContext: boolean;
+    ipcDocumentLoaded: boolean;
   };
   operatingMode: {
     active: McpOperatingMode;

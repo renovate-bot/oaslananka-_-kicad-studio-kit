@@ -848,6 +848,30 @@ def _board_file_layers(content: str) -> list[dict[str, object]]:
         if layer_name:
             inferred.add(layer_name)
         inferred.update(_footprint_layers_from_block(str(entry.get("block", ""))))
+
+    if not inferred:
+        # Standard KiCad default 2-layer board layers
+        return [
+            {"index": 0, "name": "F.Cu", "type": "signal"},
+            {"index": 31, "name": "B.Cu", "type": "signal"},
+            {"index": 34, "name": "F.Paste", "type": "surface"},
+            {"index": 35, "name": "B.Paste", "type": "surface"},
+            {"index": 36, "name": "F.SilkS", "type": "user"},
+            {"index": 37, "name": "B.SilkS", "type": "user"},
+            {"index": 38, "name": "F.Mask", "type": "user"},
+            {"index": 39, "name": "B.Mask", "type": "user"},
+            {"index": 40, "name": "Dwgs.User", "type": "user"},
+            {"index": 41, "name": "Cmts.User", "type": "user"},
+            {"index": 42, "name": "Eco1.User", "type": "user"},
+            {"index": 43, "name": "Eco2.User", "type": "user"},
+            {"index": 44, "name": "Edge.Cuts", "type": "user"},
+            {"index": 45, "name": "Margin", "type": "user"},
+            {"index": 46, "name": "F.CrtYd", "type": "user"},
+            {"index": 47, "name": "B.CrtYd", "type": "user"},
+            {"index": 48, "name": "F.Fab", "type": "user"},
+            {"index": 49, "name": "B.Fab", "type": "user"},
+        ]
+
     return [
         {"index": None, "name": layer, "type": "inferred"}
         for layer in sorted(inferred, key=_file_layer_sort_key)
@@ -1062,6 +1086,12 @@ def _file_backed_layers(ipc_error: BaseException) -> str:
     if isinstance(loaded, str):
         return loaded
     _, content, diagnostics = loaded
+    has_explicit = re.search(r"(?m)^\s*\(layers\b", content) is not None
+    if not has_explicit:
+        diagnostics = [
+            line.replace("using file-backed .kicad_pcb parser", "using KiCad defaults")
+            for line in diagnostics
+        ]
     layers = _board_file_layers(content)
     if not layers:
         return "\n".join(

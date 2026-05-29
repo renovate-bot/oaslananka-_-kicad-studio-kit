@@ -115,7 +115,8 @@
         "ipcMajorVersion",
         "ipcEndpointSource",
         "livePcbContext",
-        "liveSchematicContext"
+        "liveSchematicContext",
+        "ipcDocumentLoaded"
       ],
       "properties": {
         "cliFound": {
@@ -147,6 +148,9 @@
           "type": "boolean"
         },
         "liveSchematicContext": {
+          "type": "boolean"
+        },
+        "ipcDocumentLoaded": {
           "type": "boolean"
         }
       }

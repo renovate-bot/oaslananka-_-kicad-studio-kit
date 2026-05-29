@@ -207,11 +207,11 @@ async def test_project_resources_prompts_and_library_surface(
     assert isinstance(design_spec_validation, dict)
     assert design_spec_validation["valid"] is True
     assert isinstance(next_action, dict)
-    assert next_action["status"] in {"PASS", "FAIL", "BLOCKED"}
+    assert next_action["status"] in {"PASS", "FAIL", "BLOCKED", "EMPTY"}
     assert isinstance(placement_report, dict)
     assert placement_report["status"] in {"PASS", "BLOCKED"}
     assert isinstance(gate_report, dict)
-    assert gate_report["status"] in {"PASS", "FAIL", "BLOCKED"}
+    assert gate_report["status"] in {"PASS", "FAIL", "BLOCKED", "EMPTY"}
 
     await call_tool_text(
         server,

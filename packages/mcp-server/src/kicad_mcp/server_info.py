@@ -67,6 +67,7 @@ def get_server_info_contract(*, probe_live_context: bool = True) -> dict[str, ob
             "ipcEndpointSource": ipc_state.endpoint.source,
             "livePcbContext": ipc_state.live_pcb_context,
             "liveSchematicContext": ipc_state.live_schematic_context,
+            "ipcDocumentLoaded": ipc_state.live_pcb_context or ipc_state.live_schematic_context,
         },
         "operatingMode": operating_mode_contract(cfg),
         "capabilities": {
