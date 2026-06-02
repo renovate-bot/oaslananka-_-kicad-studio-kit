@@ -34,12 +34,10 @@ The only repository allowlist entries are:
 Run the guard locally:
 
 ```bash
-# Run from the oaslananka/kicad-mcp repository
 uv run python scripts/check_no_pcbnew.py
 ```
 
 ```powershell
-# Run from the oaslananka/kicad-mcp repository
 uv run python scripts/check_no_pcbnew.py
 ```
 
