@@ -10,7 +10,6 @@ const PROJECT_PLACEHOLDER = "/absolute/path/to/your/kicad-project";
 
 const requiredMarkdownFiles = [
   "AGENTS.md",
-  "CLAUDE.md",
   ".github/copilot-instructions.md",
   "docs/agents/index.md",
   "docs/agents/client-configs.md",
@@ -104,14 +103,6 @@ const requiredReferences = {
     "remote MCP endpoints by default",
     "unsafe webview",
     "PR #16",
-  ],
-  "CLAUDE.md": [
-    "AGENTS.md",
-    ".mcp.json",
-    "claude mcp add --transport stdio --scope project",
-    "claude-code.mcp.example.json",
-    "Windows PowerShell",
-    "KICAD_MCP_OPERATING_MODE=readonly",
   ],
   ".github/copilot-instructions.md": [
     "AGENTS.md",
