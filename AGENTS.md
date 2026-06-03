@@ -110,3 +110,41 @@ corepack pnpm run docs:links
 
 Never read, print, summarize, commit, or paste secret-bearing files such as `.env`,
 credential JSON, private keys, token stores, cookies, or local auth state.
+
+## Claude Code / Claude Desktop Setup
+
+Claude Code and Claude Desktop users should treat `AGENTS.md` as the canonical
+repository instructions, then apply the Claude-specific notes below.
+
+Use the checked-in examples under `examples/mcp-clients/`:
+
+- `claude-code.mcp.example.json` for project-scoped Claude Code setup.
+- `claude-desktop.config.example.json` for Claude Desktop.
+
+Replace `/absolute/path/to/your/kicad-project` with the target KiCad project path before
+copying a config into a real client location.
+Claude Code project scope writes shared server configuration to the project `.mcp.json`;
+review that file before trusting servers from another branch or contributor.
+
+Recommended local server on Linux/macOS:
+
+```bash
+claude mcp add --transport stdio --scope project \
+  --env KICAD_MCP_PROJECT_DIR=/absolute/path/to/your/kicad-project \
+  --env KICAD_MCP_PROFILE=pcb_only \
+  --env KICAD_MCP_OPERATING_MODE=readonly \
+  kicad -- uvx kicad-mcp-pro
+```
+
+Recommended local server on Windows PowerShell:
+
+```powershell
+claude mcp add --transport stdio --scope project `
+  --env 'KICAD_MCP_PROJECT_DIR=C:\absolute\path\to\your\kicad-project' `
+  --env 'KICAD_MCP_PROFILE=pcb_only' `
+  --env 'KICAD_MCP_OPERATING_MODE=readonly' `
+  kicad -- uvx kicad-mcp-pro
+```
+
+Use broader MCP operating modes only for tasks that explicitly require write,
+manufacturing, or experimental tools.
