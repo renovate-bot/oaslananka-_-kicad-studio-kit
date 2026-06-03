@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { execFile } from 'node:child_process';
 import { COMMANDS, SETTINGS } from '../constants';
 import type {
   McpCapabilityCard,
@@ -84,11 +85,179 @@ export class McpToolsProvider implements vscode.TreeDataProvider<McpToolsNode> {
   >();
   readonly onDidChangeTreeData = this.onDidChangeTreeDataEmitter.event;
 
+  broStatus: {
+    installed: boolean;
+    version?: string;
+    healthy: boolean;
+    message?: string;
+    tools: string[];
+  } = {
+    installed: false,
+    healthy: false,
+    tools: []
+  };
+  private isCheckingBro = false;
+
   constructor(
-    private readonly mcpAdapter: Pick<McpConnectionAdapter, 'getState'>
-  ) {}
+    private readonly mcpAdapter: Pick<McpConnectionAdapter, 'getState'>,
+    broStatusOverride?: Partial<McpToolsProvider['broStatus']>
+  ) {
+    if (broStatusOverride) {
+      this.broStatus = { ...this.broStatus, ...broStatusOverride };
+    } else {
+      void this.checkBoardReadyOps();
+    }
+  }
+
+  private async checkBoardReadyOps(): Promise<void> {
+    if (this.isCheckingBro) {
+      return;
+    }
+    if (!vscode.workspace.isTrusted) {
+      this.broStatus = {
+        installed: false,
+        healthy: false,
+        message: 'Workspace is not trusted.',
+        tools: []
+      };
+      return;
+    }
+
+    this.isCheckingBro = true;
+    const projectPath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (!projectPath) {
+      this.broStatus = {
+        installed: false,
+        healthy: false,
+        message: 'No workspace folder open.',
+        tools: []
+      };
+      this.isCheckingBro = false;
+      return;
+    }
+
+    const cmd = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+    
+    // First, run npx boardreadyops doctor --format json to get installation, version, and health status
+    const runDoctor = (): Promise<{ stdout: string; stderr: string }> => {
+      return new Promise((resolve, reject) => {
+        execFile(
+          cmd,
+          ['boardreadyops', 'doctor', '--format', 'json'],
+          { cwd: projectPath, encoding: 'utf8', timeout: 5000 },
+          (error, stdout, stderr) => {
+            if (error) {
+              reject(error);
+            } else {
+              resolve({ stdout: stdout ?? '', stderr: stderr ?? '' });
+            }
+          }
+        );
+      });
+    };
+
+    // Second, run npx boardreadyops schema findings to get list of rules
+    const runSchema = (): Promise<{ stdout: string; stderr: string }> => {
+      return new Promise((resolve, reject) => {
+        execFile(
+          cmd,
+          ['boardreadyops', 'schema', 'findings'],
+          { cwd: projectPath, encoding: 'utf8', timeout: 5000 },
+          (error, stdout, stderr) => {
+            if (error) {
+              reject(error);
+            } else {
+              resolve({ stdout: stdout ?? '', stderr: stderr ?? '' });
+            }
+          }
+        );
+      });
+    };
+
+    try {
+      const { stdout: docStdout } = await runDoctor();
+      const doc = JSON.parse(docStdout.trim());
+      const version = doc.tool?.version ?? 'unknown';
+      
+      let healthy = true;
+      let message = 'BoardReadyOps is healthy.';
+      if (Array.isArray(doc.checks)) {
+        for (const check of doc.checks) {
+          if (Array.isArray(check.items)) {
+            for (const item of check.items) {
+              if (item.severity === 'fail') {
+                healthy = false;
+                message = item.message || 'BoardReadyOps environment check failed.';
+                break;
+              }
+            }
+          }
+          if (!healthy) {
+            break;
+          }
+        }
+      }
+
+      let tools: string[] = [];
+      try {
+        const { stdout: schemaStdout } = await runSchema();
+        const schema = JSON.parse(schemaStdout.trim());
+        const enumList = schema?.$defs?.ruleId?.oneOf?.[0]?.enum;
+        if (Array.isArray(enumList)) {
+          tools = enumList;
+        }
+      } catch {
+        // Fallback list of static tools in case schema findings fails or is old
+        tools = [
+          'bom.missing-mpn',
+          'bom.single-source',
+          'bom.eol-detection',
+          'bom.lifecycle',
+          'bom.footprint-mismatch',
+          'bom.dnp-consistency',
+          'bom.variant-consistency',
+          'design.copper-balance',
+          'design.board-outline',
+          'pinmap.verify',
+          'pinmap.unmapped-pin',
+          'pinmap.collision',
+          'pinmap.net-label',
+          'manufacturing.outputs-present',
+          'manufacturing.jobset-outputs',
+          'manufacturing.panel-sanity',
+          'manufacturing.fab-notes',
+          'manufacturing.drill-coverage',
+          'manufacturing.layer-stackup',
+          'release.revision-set',
+          'release.changelog-present',
+          'release.tag-matches-revision',
+          'release.version-format'
+        ];
+      }
+
+      this.broStatus = {
+        installed: true,
+        version,
+        healthy,
+        message,
+        tools
+      };
+    } catch (err) {
+      // CLI not found or errored out
+      this.broStatus = {
+        installed: false,
+        healthy: false,
+        message: err instanceof Error ? err.message : String(err),
+        tools: []
+      };
+    } finally {
+      this.isCheckingBro = false;
+      this.onDidChangeTreeDataEmitter.fire(undefined);
+    }
+  }
 
   refresh(): void {
+    void this.checkBoardReadyOps();
     this.onDidChangeTreeDataEmitter.fire(undefined);
   }
 
@@ -117,10 +286,12 @@ export class McpToolsProvider implements vscode.TreeDataProvider<McpToolsNode> {
     if (element) {
       return element.children ?? [];
     }
-    return buildMcpToolNodes(
+    const nodes = buildMcpToolNodes(
       this.mcpAdapter.getState(),
       readConfiguredMcpProfile()
     );
+    nodes.push(boardReadyOpsNode(this.broStatus));
+    return nodes;
   }
 }
 
@@ -934,4 +1105,82 @@ function isTimeout(message: string | undefined): boolean {
 
 function isAuthOrProtocolFailure(message: string | undefined): boolean {
   return /auth|401|403|protocol|header|version/iu.test(message ?? '');
+}
+
+function isVersionDegraded(version: string): boolean {
+  if (version === 'unknown') {
+    return false;
+  }
+  const match = version.match(/^v?(\d+)\.(\d+)\.(\d+)/);
+  if (!match) {
+    return false;
+  }
+  const major = parseInt(match[1] ?? '0', 10);
+  const minor = parseInt(match[2] ?? '0', 10);
+  if (major < 1 || (major === 1 && minor < 2)) {
+    return true;
+  }
+  return false;
+}
+
+function boardReadyOpsNode(
+  status: {
+    installed: boolean;
+    version?: string;
+    healthy: boolean;
+    message?: string;
+    tools: string[];
+  }
+): McpToolsNode {
+  const enabled = vscode.workspace.getConfiguration().get<boolean>(SETTINGS.boardReadyOpsEnabled, false);
+  
+  if (!status.installed) {
+    return {
+      label: 'BoardReadyOps',
+      description: 'unavailable',
+      tooltip: status.message || 'BoardReadyOps CLI was not found. Install it to enable PCB preflight checks.',
+      icon: 'circle-slash',
+      children: [
+        dashboardField('CLI', 'not found', undefined, 'warning'),
+        actionNode('Configure Checks', COMMANDS.boardReadyOpsConfigure, 'Open BoardReadyOps extension settings', 'gear'),
+        actionNode('Open Documentation', COMMANDS.boardReadyOpsOpenDocs, 'Open BoardReadyOps documentation', 'book')
+      ]
+    };
+  }
+
+  const isOld = isVersionDegraded(status.version ?? 'unknown');
+  const healthy = status.healthy && !isOld;
+  const statusLabel = healthy ? 'healthy' : (isOld ? 'degraded (old version)' : 'degraded');
+  const statusIcon = healthy ? 'pass' : 'warning';
+  
+  const toolNodes = status.tools.map((tool) => ({
+    label: tool,
+    description: healthy ? 'available' : 'degraded',
+    tooltip: `${tool} - BoardReadyOps rule check`,
+    icon: healthy ? 'symbol-method' : 'warning'
+  }));
+
+  const children: McpToolsNode[] = [
+    dashboardField('CLI', `boardreadyops v${status.version}`, undefined, 'info'),
+    dashboardField('Health', statusLabel, status.message || (isOld ? 'Please upgrade BoardReadyOps to v1.2.0 or newer.' : undefined), statusIcon),
+    {
+      label: 'Advertised tools',
+      description: `${status.tools.length}`,
+      tooltip: 'BoardReadyOps preflight rules.',
+      icon: 'list-tree',
+      children: toolNodes
+    },
+    actionNode('Check Board Readiness', COMMANDS.boardReadyOpsCheck, 'Run BoardReadyOps preflight checks on the active board', 'play'),
+    actionNode('Show Readiness Report', COMMANDS.boardReadyOpsShowReport, 'Show last BoardReadyOps run report', 'report'),
+    actionNode('Configure Checks', COMMANDS.boardReadyOpsConfigure, 'Open BoardReadyOps extension settings', 'gear'),
+    actionNode('Open Documentation', COMMANDS.boardReadyOpsOpenDocs, 'Open BoardReadyOps documentation', 'book')
+  ];
+
+  return {
+    label: 'BoardReadyOps',
+    description: enabled ? (healthy ? `v${status.version}` : 'degraded') : 'disabled',
+    tooltip: `BoardReadyOps preflight checks: ${healthy ? 'active' : 'degraded'}`,
+    icon: healthy ? 'verified' : 'warning',
+    children
+  };
 }

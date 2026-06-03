@@ -34,7 +34,8 @@ describe('McpToolsProvider', () => {
       'Compatibility dashboard',
       'Actions',
       'Install',
-      'Raw advertised capabilities'
+      'Raw advertised capabilities',
+      'BoardReadyOps'
     ]);
     expect(treeDescription(provider, children, 'Compatibility dashboard')).toBe(
       'degraded'
@@ -334,13 +335,129 @@ describe('McpToolsProvider', () => {
         "Raw advertised capabilities > Resources > project://active ::",
         "Raw advertised capabilities > Prompts :: 1",
         "Raw advertised capabilities > Prompts > manufacturing-review ::",
+        "BoardReadyOps :: unavailable",
+        "BoardReadyOps > CLI :: not found",
+        "BoardReadyOps > Configure Checks ::",
+        "BoardReadyOps > Open Documentation ::",
       ]
     `);
   });
+
+  describe('BoardReadyOps integration', () => {
+    it('handles absent CLI state', () => {
+      const provider = providerForState(
+        connectedState({ tools: [] }),
+        { installed: false, healthy: false, message: 'Not found' }
+      );
+      const children = provider.getChildren();
+      const broNode = child(children, 'BoardReadyOps');
+      const item = provider.getTreeItem(broNode);
+      expect(item.description).toBe('unavailable');
+      expect(item.tooltip).toBe('Not found');
+
+      const broChildren = provider.getChildren(broNode);
+      expect(labels(broChildren)).toEqual([
+        'CLI',
+        'Configure Checks',
+        'Open Documentation'
+      ]);
+      expect(provider.getTreeItem(child(broChildren, 'CLI')).description).toBe('not found');
+    });
+
+    it('handles disabled state', () => {
+      __setConfiguration({
+        'kicadstudio.boardReadyOps.enabled': false
+      });
+      const provider = providerForState(
+        connectedState({ tools: [] }),
+        { installed: true, version: '1.2.3', healthy: true, tools: ['bom.missing-mpn'] }
+      );
+      const children = provider.getChildren();
+      const broNode = child(children, 'BoardReadyOps');
+      const item = provider.getTreeItem(broNode);
+      expect(item.description).toBe('disabled');
+      expect(item.tooltip).toBe('BoardReadyOps preflight checks: active');
+    });
+
+    it('handles healthy/available state', () => {
+      __setConfiguration({
+        'kicadstudio.boardReadyOps.enabled': true
+      });
+      const provider = providerForState(
+        connectedState({ tools: [] }),
+        { installed: true, version: '1.2.3', healthy: true, tools: ['bom.missing-mpn'] }
+      );
+      const children = provider.getChildren();
+      const broNode = child(children, 'BoardReadyOps');
+      const item = provider.getTreeItem(broNode);
+      expect(item.description).toBe('v1.2.3');
+      expect(item.tooltip).toBe('BoardReadyOps preflight checks: active');
+
+      const broChildren = provider.getChildren(broNode);
+      expect(labels(broChildren)).toEqual([
+        'CLI',
+        'Health',
+        'Advertised tools',
+        'Check Board Readiness',
+        'Show Readiness Report',
+        'Configure Checks',
+        'Open Documentation'
+      ]);
+      expect(provider.getTreeItem(child(broChildren, 'Health')).description).toBe('healthy');
+      
+      const toolsNode = child(broChildren, 'Advertised tools');
+      expect(provider.getTreeItem(toolsNode).description).toBe('1');
+      expect(labels(provider.getChildren(toolsNode))).toEqual(['bom.missing-mpn']);
+    });
+
+    it('handles degraded state due to old version', () => {
+      __setConfiguration({
+        'kicadstudio.boardReadyOps.enabled': true
+      });
+      const provider = providerForState(
+        connectedState({ tools: [] }),
+        { installed: true, version: '1.1.0', healthy: true, tools: ['bom.missing-mpn'] }
+      );
+      const children = provider.getChildren();
+      const broNode = child(children, 'BoardReadyOps');
+      const item = provider.getTreeItem(broNode);
+      expect(item.description).toBe('degraded');
+
+      const broChildren = provider.getChildren(broNode);
+      const healthItem = provider.getTreeItem(child(broChildren, 'Health'));
+      expect(healthItem.description).toBe('degraded (old version)');
+      expect(healthItem.tooltip).toContain('upgrade BoardReadyOps');
+    });
+
+    it('handles degraded state due to unhealthy doctor checks', () => {
+      __setConfiguration({
+        'kicadstudio.boardReadyOps.enabled': true
+      });
+      const provider = providerForState(
+        connectedState({ tools: [] }),
+        { installed: true, version: '1.2.3', healthy: false, message: 'Doctor failed', tools: ['bom.missing-mpn'] }
+      );
+      const children = provider.getChildren();
+      const broNode = child(children, 'BoardReadyOps');
+      const item = provider.getTreeItem(broNode);
+      expect(item.description).toBe('degraded');
+
+      const broChildren = provider.getChildren(broNode);
+      const healthItem = provider.getTreeItem(child(broChildren, 'Health'));
+      expect(healthItem.description).toBe('degraded');
+      expect(healthItem.tooltip).toBe('Doctor failed');
+    });
+  });
 });
 
-function providerForState(state: McpConnectionState): McpToolsProvider {
-  return new McpToolsProvider({ getState: () => state } as never);
+function providerForState(
+  state: McpConnectionState,
+  broStatusOverride: Partial<McpToolsProvider['broStatus']> = { installed: false }
+): McpToolsProvider {
+  return new McpToolsProvider(
+    { getState: () => state } as never,
+    broStatusOverride
+  );
 }
 
 function connectedState(options: {
