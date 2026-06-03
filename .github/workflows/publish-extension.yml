@@ -271,7 +271,19 @@ jobs:
           version="$(node -p "require('./apps/vscode-extension/package.json').version")"
           OPENVSX_VERIFY_DIR="$GITHUB_WORKSPACE/release-assets/openvsx-verify"
           mkdir -p "$OPENVSX_VERIFY_DIR"
-          corepack pnpm --filter kicadstudiokit exec ovsx get oaslananka.kicadstudiokit --metadata --versionRange "$version" > "$OPENVSX_VERIFY_DIR/metadata.json"
+          for attempt in 1 2 3 4 5; do
+            if corepack pnpm --filter kicadstudiokit exec ovsx get oaslananka.kicadstudiokit --metadata --versionRange "$version" > "$OPENVSX_VERIFY_DIR/metadata.json" 2>/dev/null; then
+              if grep -q "\"$version\"" "$OPENVSX_VERIFY_DIR/metadata.json"; then
+                echo "Open VSX indexed version $version on attempt $attempt"
+                break
+              fi
+            fi
+            if [ "$attempt" -eq 5 ]; then
+              echo "::error::Open VSX did not index version $version after 5 attempts"
+              exit 1
+            fi
+            sleep 10
+          done
           corepack pnpm --filter kicadstudiokit exec ovsx get oaslananka.kicadstudiokit --versionRange "$version" --output "$OPENVSX_VERIFY_DIR"
           downloaded="$(find "$OPENVSX_VERIFY_DIR" -type f -name '*.vsix' | sort | tail -n1)"
           test -n "$downloaded"
