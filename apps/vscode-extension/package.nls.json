@@ -1,5 +1,5 @@
 {
-  "kicadstudio.displayName": "KiCad Studio",
+  "kicadstudio.displayName": "KiCad Studio Kit",
   "kicadstudio.description": "The complete KiCad development environment for VS Code — view schematics & PCBs, run DRC/ERC, export production files, search components, and get AI-powered design assistance.",
   "kicadstudio.capabilities.untrustedWorkspaces.description": "KiCad Studio provides read-only language and viewer features in Restricted Mode. Commands that launch kicad-cli, KiCad, or external export/import tooling require workspace trust.",
   "kicadstudio.contributes.languages.0.aliases.0": "KiCad Schematic",
