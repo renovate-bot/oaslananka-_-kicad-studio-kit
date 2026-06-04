@@ -197,8 +197,8 @@ jobs:
           NODE
 
   publish_openvsx:
-    needs: [package, publish_vscode]
-    if: ${{ always() && (github.event_name == 'release' || inputs.publish_openvsx == 'true') && (needs.publish_vscode.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.publish_vscode == 'false' && inputs.publish_openvsx == 'true')) && needs.package.outputs.openvsx_prerelease_allowed == 'true' }}
+    needs: [package]
+    if: ${{ (github.event_name == 'release' || inputs.publish_openvsx == 'true') && needs.package.outputs.openvsx_prerelease_allowed == 'true' }}
     continue-on-error: true
     runs-on: ubuntu-24.04
     environment: extension-marketplaces
