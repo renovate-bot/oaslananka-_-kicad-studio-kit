@@ -9,14 +9,15 @@ import {
 } from '../../src/ai/prompts';
 
 describe('AI prompt builders', () => {
-  it('normalizes supported languages and falls back to English', () => {
-    expect(normalizeAiLanguage('fr')).toBe('fr');
-    expect(normalizeAiLanguage('pt-BR')).toBe('pt-BR');
+  it('always uses English', () => {
+    expect(normalizeAiLanguage('fr')).toBe('en');
+    expect(normalizeAiLanguage('pt-BR')).toBe('en');
     expect(normalizeAiLanguage('unknown')).toBe('en');
+    expect(normalizeAiLanguage('en')).toBe('en');
   });
 
   it('builds system prompts with project context details', () => {
-    const prompt = buildSystemPrompt('tr', {
+    const prompt = buildSystemPrompt('en', {
       projectName: 'motor-control',
       boardLayers: 4,
       kicadVersion: '10.0.0',
@@ -24,7 +25,7 @@ describe('AI prompt builders', () => {
       mcpConnected: true
     });
 
-    expect(prompt).toContain('Respond in Turkish.');
+    expect(prompt).toContain('Respond in English.');
     expect(prompt).toContain('Project name: motor-control.');
     expect(prompt).toContain('Board has 4 layers.');
     expect(prompt).toContain('KiCad version: 10.0.0.');

@@ -1,5 +1,3 @@
-import * as vscode from 'vscode';
-
 export const WEBVIEW_MESSAGES = [
   'KiCad Studio Settings',
   'KiCad CLI',
@@ -22,14 +20,6 @@ export const WEBVIEW_MESSAGES = [
   'Chat Completions',
   'Response language',
   'English',
-  'Turkish',
-  'German',
-  'Chinese (Simplified)',
-  'Japanese',
-  'French',
-  'Spanish',
-  'Korean',
-  'Portuguese (Brazil)',
   'Allow language model tools',
   'MCP',
   'Open integration docs',
@@ -257,30 +247,22 @@ export const WEBVIEW_MESSAGES = [
 export type WebviewMessage = (typeof WEBVIEW_MESSAGES)[number];
 
 export function webviewLocale(): string {
-  return (vscode.env.language || 'en').replace('_', '-');
+  return 'en';
 }
 
 export function buildWebviewMessageMap(
-  translate: (message: string) => string = (message) => vscode.l10n.t(message)
+  _translate?: (message: string) => string
 ): Record<WebviewMessage, string> {
   return Object.fromEntries(
-    WEBVIEW_MESSAGES.map((message) => [message, translate(message)])
+    WEBVIEW_MESSAGES.map((message) => [message, message])
   ) as Record<WebviewMessage, string>;
 }
 
-export function buildPseudoLocaleMessageMap(): Record<WebviewMessage, string> {
-  return buildWebviewMessageMap(pseudoLocalize);
-}
-
 export function localizeWebviewMessage(message: WebviewMessage): string {
-  return vscode.l10n.t(message);
+  return message;
 }
 
 export function injectWebviewLocalization(html: string, nonce: string): string {
-  const messagesJson = JSON.stringify(buildWebviewMessageMap()).replace(
-    /</gu,
-    '\\u003c'
-  );
   const attrsJson = JSON.stringify([
     'aria-label',
     'placeholder',
@@ -288,121 +270,18 @@ export function injectWebviewLocalization(html: string, nonce: string): string {
     'alt'
   ]);
   const script = `<script nonce="${escapeAttribute(nonce)}">
-(() => {
-  const messages = ${messagesJson};
-  const localizableAttributes = ${attrsJson};
-  const translate = (value) => {
-    const trimmed = String(value || '').trim();
-    return trimmed ? messages[trimmed] || trimmed : String(value || '');
-  };
-  const apply = () => {
-    if (!document.body) {
-      return;
-    }
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    const textNodes = [];
-    while (walker.nextNode()) {
-      textNodes.push(walker.currentNode);
-    }
-    for (const node of textNodes) {
-      const raw = node.nodeValue || '';
-      const trimmed = raw.trim();
-      const translated = translate(trimmed);
-      if (trimmed && translated !== trimmed) {
-        node.nodeValue = raw.replace(trimmed, translated);
-      }
-    }
-    for (const element of document.querySelectorAll('*')) {
-      for (const attr of localizableAttributes) {
-        if (element.hasAttribute(attr)) {
-          const current = element.getAttribute(attr) || '';
-          const translated = translate(current);
-          if (translated !== current) {
-            element.setAttribute(attr, translated);
-          }
-        }
-      }
-    }
-  };
-  globalThis.kicadStudioL10n = { messages, t: translate, apply };
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', apply, { once: true });
-  } else {
-    apply();
+globalThis.kicadStudioL10n = { messages: {}, t: (value) => value, attrs: ${attrsJson} };
+document.addEventListener('DOMContentLoaded', () => {
+  for (const el of document.querySelectorAll('[data-i18n]')) {
+    el.textContent = el.getAttribute('data-i18n');
   }
-})();
+}, { once: true });
 </script>`;
-  const localizedHtml = html.replace(
-    /<html lang="en"/iu,
-    `<html lang="${escapeAttribute(webviewLocale())}"`
-  );
+  const localizedHtml = html.replace(/<html lang="en"/iu, `<html lang="en"`);
   return /<body\b[^>]*>/iu.test(localizedHtml)
     ? localizedHtml.replace(/(<body\b[^>]*>)/iu, `$1\n${script}`)
     : `${localizedHtml}${script}`;
 }
-
-export function pseudoLocalize(message: string): string {
-  const expanded = message.replace(/[A-Za-z]/gu, (letter) => {
-    const pseudo = PSEUDO_ALPHABET[letter];
-    return pseudo ?? letter;
-  });
-  return `[!! ${expanded} !!]`;
-}
-
-const PSEUDO_ALPHABET: Record<string, string> = {
-  A: 'Å',
-  B: 'Ɓ',
-  C: 'Ç',
-  D: 'Ð',
-  E: 'Ë',
-  F: 'Ƒ',
-  G: 'Ğ',
-  H: 'Ħ',
-  I: 'Ï',
-  J: 'Ĵ',
-  K: 'Ķ',
-  L: 'Ŀ',
-  M: 'Ṁ',
-  N: 'Ñ',
-  O: 'Ö',
-  P: 'Þ',
-  Q: 'Ǫ',
-  R: 'Ŕ',
-  S: 'Š',
-  T: 'Ŧ',
-  U: 'Ü',
-  V: 'Ṽ',
-  W: 'Ŵ',
-  X: 'Ẋ',
-  Y: 'Ÿ',
-  Z: 'Ž',
-  a: 'å',
-  b: 'ƀ',
-  c: 'ç',
-  d: 'ð',
-  e: 'ë',
-  f: 'ƒ',
-  g: 'ğ',
-  h: 'ħ',
-  i: 'ï',
-  j: 'ĵ',
-  k: 'ķ',
-  l: 'ŀ',
-  m: 'ṁ',
-  n: 'ñ',
-  o: 'ö',
-  p: 'þ',
-  q: 'ǫ',
-  r: 'ŕ',
-  s: 'š',
-  t: 'ŧ',
-  u: 'ü',
-  v: 'ṽ',
-  w: 'ŵ',
-  x: 'ẋ',
-  y: 'ÿ',
-  z: 'ž'
-};
 
 function escapeAttribute(value: string): string {
   return value.replace(/&/gu, '&amp;').replace(/"/gu, '&quot;');

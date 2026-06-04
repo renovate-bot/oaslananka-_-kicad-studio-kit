@@ -39,7 +39,7 @@ corepack pnpm --filter kicadstudiokit run package
 | DRC/ERC review            | Problems integration, freshness state, quality gates, and focused validation views                   | Helps separate fresh failures from stale report files                     |
 | BOM, netlist, and exports | Repeatable commands for manufacturing handoff and release review                                     | Pairs with KiCad jobsets and project-specific presets                     |
 | MCP tools dashboard       | `kicad-mcp-pro` discovery, version gating, tool status, and AI workflow readiness                    | MCP-dependent commands disable themselves when the server is incompatible |
-| Localization              | English and Turkish listing copy with extension string infrastructure                                | Paired with OASLANA-106 localization work                                 |
+| Localization              | English listing copy with extension string infrastructure                                            | Active                                                                    |
 
 ## Screenshots
 
@@ -72,7 +72,7 @@ KiCad Studio 1.3.0 supports `kicad-mcp-pro >=3.5.2 <4.0.0` and was tested agains
 
 ## Marketplace Listing Copy
 
-The manual Marketplace and Open VSX checklist, English short/long listing copy, and Turkish localized copy live in [docs/marketplace-listing.md](docs/marketplace-listing.md).
+The manual Marketplace and Open VSX checklist and English short/long listing copy live in [docs/marketplace-listing.md](docs/marketplace-listing.md).
 
 ## Release Notes
 

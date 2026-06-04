@@ -167,7 +167,6 @@ describe('marketplace listing assets', () => {
 
     expectMarkdownSection(listingDoc, 'Manual Review Checklist');
     expectMarkdownSection(listingDoc, 'English Listing Copy');
-    expectMarkdownSection(listingDoc, 'Turkish Listing Copy');
     expect(listingDoc).toContain('OASLANA-115');
   });
 });

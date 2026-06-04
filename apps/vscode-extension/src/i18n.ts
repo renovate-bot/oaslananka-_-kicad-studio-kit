@@ -1,5 +1,3 @@
-import * as vscode from 'vscode';
-
 export const SOURCE_MESSAGES = {
   workspaceTrustRequired:
     '{feature} requires a trusted workspace. Trust this workspace to run KiCad CLI, external KiCad, import, or export tooling.',
@@ -102,6 +100,11 @@ export function localize(
   key: SourceMessageKey,
   args?: Record<string, string | number | boolean>
 ): string {
-  const message = SOURCE_MESSAGES[key];
-  return args ? vscode.l10n.t(message, args) : vscode.l10n.t(message);
+  let message = SOURCE_MESSAGES[key];
+  if (args) {
+    for (const [k, v] of Object.entries(args)) {
+      message = message.replace(`{${k}}`, String(v)) as any;
+    }
+  }
+  return message;
 }

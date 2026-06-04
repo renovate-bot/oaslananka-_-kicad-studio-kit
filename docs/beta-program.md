@@ -53,7 +53,7 @@ Target tester mix:
 - Professional multi-board users.
 - Educators using KiCad in courses.
 - Embedded systems engineers working on SismoSmart or ThermoLink class designs.
-- Non-English users, including Turkish, German, and Chinese.
+- Non-English users.
 - Windows, macOS, and Linux users.
 
 Every participant agrees to the no NDA policy: do not upload proprietary

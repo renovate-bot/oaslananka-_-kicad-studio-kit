@@ -24,7 +24,6 @@ export function createBetaProgramChecks() {
   const rootPackage = readJson("package.json");
   const extensionPackage = readJson("apps/vscode-extension/package.json");
   const englishNls = readJson("apps/vscode-extension/package.nls.json");
-  const turkishNls = readJson("apps/vscode-extension/package.nls.tr.json");
   const packageExtensionScript = readText(
     "apps/vscode-extension/scripts/package-extension.js",
   );
@@ -106,11 +105,6 @@ export function createBetaProgramChecks() {
       "English command title is present",
       englishNls["kicadstudio.contributes.commands.92.title"] ===
         "KiCad Studio: Send Feedback",
-    ),
-    check(
-      "Turkish command title is present",
-      turkishNls["kicadstudio.contributes.commands.92.title"] ===
-        "KiCad Studio: Geri Bildirim Gönder",
     ),
     check(
       "publish workflow passes pre-release package env",

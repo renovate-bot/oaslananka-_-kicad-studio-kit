@@ -1,13 +1,4 @@
-export type AiLanguage =
-  | 'en'
-  | 'tr'
-  | 'de'
-  | 'zh-CN'
-  | 'ja'
-  | 'fr'
-  | 'es'
-  | 'ko'
-  | 'pt-BR';
+export type AiLanguage = 'en';
 
 export interface KiCadContext {
   boardLayers?: number | undefined;
@@ -24,33 +15,13 @@ export const DEFAULT_GEMINI_MODEL = 'gemini-2.5-pro';
 export const DEFAULT_OPENAI_API_MODE = 'responses';
 
 const LANGUAGE_NAMES: Record<AiLanguage, string> = {
-  en: 'English',
-  tr: 'Turkish',
-  de: 'German',
-  'zh-CN': 'Simplified Chinese',
-  ja: 'Japanese',
-  fr: 'French',
-  es: 'Spanish',
-  ko: 'Korean',
-  'pt-BR': 'Brazilian Portuguese'
+  en: 'English'
 };
 
 /**
  * Normalize a user-configured language code into a supported AI response language.
  */
-export function normalizeAiLanguage(value: string | undefined): AiLanguage {
-  if (
-    value === 'tr' ||
-    value === 'de' ||
-    value === 'zh-CN' ||
-    value === 'ja' ||
-    value === 'fr' ||
-    value === 'es' ||
-    value === 'ko' ||
-    value === 'pt-BR'
-  ) {
-    return value;
-  }
+export function normalizeAiLanguage(_value: string | undefined): AiLanguage {
   return DEFAULT_AI_LANGUAGE;
 }
 

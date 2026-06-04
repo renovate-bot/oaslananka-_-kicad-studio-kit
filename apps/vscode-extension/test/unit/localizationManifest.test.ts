@@ -1,14 +1,11 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { SOURCE_MESSAGES } from '../../src/i18n';
 
 type JsonObject = Record<string, unknown>;
 
 const EXTENSION_ROOT = path.resolve(__dirname, '..', '..');
 const PACKAGE_JSON_PATH = path.join(EXTENSION_ROOT, 'package.json');
 const PACKAGE_NLS_PATH = path.join(EXTENSION_ROOT, 'package.nls.json');
-const PACKAGE_NLS_TR_PATH = path.join(EXTENSION_ROOT, 'package.nls.tr.json');
-const BUNDLE_TR_PATH = path.join(EXTENSION_ROOT, 'l10n', 'bundle.l10n.tr.json');
 
 function readJson<T>(filePath: string): T {
   return JSON.parse(fs.readFileSync(filePath, 'utf8')) as T;
@@ -119,68 +116,18 @@ function collectHardCodedContributionStrings(
   return findings;
 }
 
-function collectContributedCommands(packageJson: {
-  contributes?: { commands?: Array<{ command?: unknown }> };
-}): Set<string> {
-  return new Set(
-    (packageJson.contributes?.commands ?? [])
-      .map((command) => command.command)
-      .filter((command): command is string => typeof command === 'string')
-  );
-}
-
-function collectUnknownCommandLinks(
-  messages: Record<string, string>,
-  contributedCommands: Set<string>
-): string[] {
-  const findings: string[] = [];
-  const commandLinkPattern = /\(command:([^)]+)\)/gu;
-
-  for (const [key, message] of Object.entries(messages)) {
-    for (const match of message.matchAll(commandLinkPattern)) {
-      const commandId = match[1];
-      if (!commandId) {
-        continue;
-      }
-      const knownBuiltIn = commandId.startsWith('workbench.action.');
-      if (!knownBuiltIn && !contributedCommands.has(commandId)) {
-        findings.push(`${key}: ${commandId}`);
-      }
-    }
-  }
-
-  return findings;
-}
-
 describe('extension localization manifest', () => {
-  it('declares package and source-code localization bundles', () => {
-    const packageJson = readJson<JsonObject>(PACKAGE_JSON_PATH);
-
-    expect(packageJson['l10n']).toBe('./l10n');
-    expect(fs.existsSync(PACKAGE_NLS_PATH)).toBe(true);
-    expect(fs.existsSync(PACKAGE_NLS_TR_PATH)).toBe(true);
-    expect(fs.existsSync(BUNDLE_TR_PATH)).toBe(true);
-    expect(fs.existsSync(path.join(EXTENSION_ROOT, 'src', 'i18n.ts'))).toBe(
-      true
-    );
-  });
-
-  it('has complete English and Turkish strings for every package.json localization key', () => {
+  it('has a package.nls.json with English strings for every package.json localization key', () => {
     const packageJson = readJson<JsonObject>(PACKAGE_JSON_PATH);
     const english = readJson<Record<string, string>>(PACKAGE_NLS_PATH);
-    const turkish = readJson<Record<string, string>>(PACKAGE_NLS_TR_PATH);
     const keys = [...collectManifestLocalizationKeys(packageJson)].sort();
 
     expect(keys.length).toBeGreaterThan(50);
     for (const key of keys) {
       const englishMessage = english[key];
-      const turkishMessage = turkish[key];
       expect(englishMessage).toEqual(expect.any(String));
       expect(englishMessage?.trim()).not.toBe('');
-      expect(turkishMessage).toEqual(expect.any(String));
-      expect(turkishMessage?.trim()).not.toBe('');
     }
-    expect(Object.keys(turkish).sort()).toEqual(Object.keys(english).sort());
   });
 
   it('keeps package contribution labels and descriptions behind localization keys', () => {
@@ -192,34 +139,5 @@ describe('extension localization manifest', () => {
     );
 
     expect(findings).toEqual([]);
-  });
-
-  it('keeps localized markdown command links pointed at real commands', () => {
-    const packageJson = readJson<{
-      contributes?: { commands?: Array<{ command?: unknown }> };
-    }>(PACKAGE_JSON_PATH);
-    const contributedCommands = collectContributedCommands(packageJson);
-
-    expect(
-      collectUnknownCommandLinks(
-        readJson<Record<string, string>>(PACKAGE_NLS_PATH),
-        contributedCommands
-      )
-    ).toEqual([]);
-    expect(
-      collectUnknownCommandLinks(
-        readJson<Record<string, string>>(PACKAGE_NLS_TR_PATH),
-        contributedCommands
-      )
-    ).toEqual([]);
-  });
-
-  it('has Turkish translations for source-code localization messages', () => {
-    const turkish = readJson<Record<string, string>>(BUNDLE_TR_PATH);
-
-    for (const message of Object.values(SOURCE_MESSAGES)) {
-      expect(turkish[message]).toEqual(expect.any(String));
-      expect(turkish[message]?.trim()).not.toBe('');
-    }
   });
 });

@@ -41,8 +41,7 @@
     "assets/icon-light.png",
     "assets/icon-dark.png",
     "package.json",
-    "package.nls.json",
-    "package.nls.tr.json"
+    "package.nls.json"
   ],
   "allowedGlobs": [
     "assets/marketplace/**",
@@ -51,7 +50,6 @@
     "dist/*.js",
     "dist/*.js.LICENSE.txt",
     "docs/**",
-    "l10n/**",
     "media/kicanvas/**",
     "media/styles/**",
     "media/vendor/**",
