@@ -198,7 +198,7 @@ jobs:
 
   publish_openvsx:
     needs: [package]
-    if: ${{ true }}
+    if: ${{ (github.event_name == 'release' || inputs.publish_openvsx == 'true') && needs.package.outputs.openvsx_prerelease_allowed == 'true' }}
     continue-on-error: true
     runs-on: ubuntu-24.04
     environment: extension-marketplaces
