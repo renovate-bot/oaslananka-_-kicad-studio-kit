@@ -453,7 +453,13 @@ export async function activate(
   context.subscriptions.push(
     projectFileWatcher,
     projectFileWatcher.onDidCreate(refreshProjectsScheduled),
-    projectFileWatcher.onDidDelete(refreshProjectsScheduled)
+    projectFileWatcher.onDidDelete(refreshProjectsScheduled),
+    new vscode.Disposable(() => {
+      if (refreshProjectsTimer) {
+        clearTimeout(refreshProjectsTimer);
+        refreshProjectsTimer = undefined;
+      }
+    })
   );
 
   registerAllCommands(context, {

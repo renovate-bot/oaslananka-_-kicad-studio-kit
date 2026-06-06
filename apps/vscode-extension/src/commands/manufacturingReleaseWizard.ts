@@ -41,14 +41,19 @@ export async function runManufacturingReleaseWizard(
             .replace(/[:.]/g, '-')}`
         )
       : '';
-    const outputDir = await vscode.window.showInputBox({
+    const outputDirInput = await vscode.window.showInputBox({
       title: 'Manufacturing release output folder',
       value: defaultOutput,
       prompt: 'Output directory for the manufacturing release package.'
     });
-    if (!outputDir) {
+    if (!outputDirInput) {
       return;
     }
+    const outputDir = path.isAbsolute(outputDirInput)
+      ? outputDirInput
+      : root
+        ? path.resolve(root, outputDirInput)
+        : path.resolve(outputDirInput);
 
     let mcpResult: Record<string, unknown> | undefined;
     const filesGenerated: string[] = [];
@@ -85,10 +90,14 @@ export async function runManufacturingReleaseWizard(
         for (const entry of entries) {
           if (typeof entry === 'string') {
             const fullPath = path.join(outputDir, entry);
-            if (fs.statSync(fullPath).isFile()) {
-              if (!filesGenerated.includes(fullPath)) {
-                filesGenerated.push(fullPath);
+            try {
+              if (fs.statSync(fullPath).isFile()) {
+                if (!filesGenerated.includes(fullPath)) {
+                  filesGenerated.push(fullPath);
+                }
               }
+            } catch {
+              // Skip files that cannot be stat'd (permission/broken symlink)
             }
           }
         }
@@ -195,20 +204,34 @@ async function generateManifest(
 
   // Compute checksums for generated files
   const fileEntries: ManifestFileEntry[] = [];
+  const seenPaths = new Set<string>();
   for (const filePath of options.files) {
     try {
-      if (fs.existsSync(filePath)) {
-        const stat = fs.statSync(filePath);
-        const content = fs.readFileSync(filePath);
-        const hash = crypto.createHash('sha256').update(content).digest('hex');
+      const absolutePath = path.isAbsolute(filePath)
+        ? filePath
+        : path.resolve(outputDir, filePath);
+      if (seenPaths.has(absolutePath)) {
+        continue;
+      }
+      seenPaths.add(absolutePath);
+      const fileUri = vscode.Uri.file(absolutePath);
+      try {
+        const stat = await vscode.workspace.fs.stat(fileUri);
+        const content = await vscode.workspace.fs.readFile(fileUri);
+        const hash = crypto
+          .createHash('sha256')
+          .update(Buffer.from(content))
+          .digest('hex');
         fileEntries.push({
-          path: path.relative(outputDir, filePath),
+          path: path.relative(outputDir, absolutePath),
           size: stat.size,
           sha256: hash
         });
+      } catch {
+        // Skip unreadable files
       }
     } catch {
-      // Skip unreadable files
+      // Skip invalid paths
     }
   }
 
@@ -235,7 +258,13 @@ async function generateManifest(
   };
 
   const manifestPath = path.join(outputDir, 'manifest.json');
-  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
+  const manifestBytes = new TextEncoder().encode(
+    JSON.stringify(manifest, null, 2)
+  );
+  await vscode.workspace.fs.writeFile(
+    vscode.Uri.file(manifestPath),
+    manifestBytes
+  );
 }
 
 async function chooseVariant(

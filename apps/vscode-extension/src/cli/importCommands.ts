@@ -52,6 +52,17 @@ export class KiCadImportService {
     if (!(await this.isImportFormatSupported(format))) {
       if (format !== 'auto') {
         void vscode.window.showWarningMessage(unsupportedImportMessage(format));
+      } else {
+        const learnMore = 'Learn More';
+        const selection = await vscode.window.showWarningMessage(
+          'PCB import is not supported by your KiCad CLI version. KiCad 10.0 or newer is required.',
+          learnMore
+        );
+        if (selection === learnMore) {
+          void vscode.env.openExternal(
+            vscode.Uri.parse('https://www.kicad.org/download/')
+          );
+        }
       }
       return;
     }

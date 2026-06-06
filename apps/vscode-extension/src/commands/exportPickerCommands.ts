@@ -3,8 +3,6 @@ import { COMMANDS } from '../constants';
 import { registerTrustedCommand } from '../utils/workspaceTrust';
 import type { CommandServices } from './types';
 
-const QUICK_PICK_SEPARATOR = -1;
-
 interface ExportPickerEntry {
   label: string;
   description: string;
@@ -325,7 +323,10 @@ async function showExportPicker(): Promise<void> {
     if (entries.length === 0) {
       continue;
     }
-    items.push({ label: CATEGORY_LABELS[cat], kind: QUICK_PICK_SEPARATOR });
+    items.push({
+      label: CATEGORY_LABELS[cat],
+      kind: vscode.QuickPickItemKind.Separator
+    });
     for (const entry of entries) {
       items.push({
         label: entry.label,
