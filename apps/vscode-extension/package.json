@@ -11,7 +11,7 @@
   "enabledApiProposals": [
     "mcpConfigurationProvider"
   ],
-  "packageManager": "pnpm@11.5.0",
+  "packageManager": "pnpm@11.6.0",
   "devEngines": {
     "runtime": {
       "name": "node",
