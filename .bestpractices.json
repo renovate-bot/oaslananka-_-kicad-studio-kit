@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "project_name": "KiCad Studio Kit",
+  "repository_url": "https://github.com/oaslananka/kicad-studio-kit",
+  "best_practices_project_id": 13405,
+  "best_practices_project_url": "https://www.bestpractices.dev/projects/13405",
+  "evidence": {
+    "primary": "docs/best-practices-evidence.md",
+    "maturity_report": "docs/repo-maturity-report.md",
+    "openssf_evidence": "docs/openssf-evidence.md",
+    "openssf_gap_analysis": "docs/openssf-gap-analysis.md",
+    "proposal_links": "docs/openssf-proposal-links.md"
+  },
+  "declared_target": "Solo-maintainer Professional OSS / Mature OSS",
+  "gold_claim": "not_claimed",
+  "gold_blockers": [
+    "Branch protection is not active on main according to the GitHub API at the time of this audit.",
+    "Gold/foundation-grade is not the current target for the solo-maintainer operating model.",
+    "Multiple independent maintainers, independent reviewers, and two-person review are future-only Gold requirements.",
+    "Gold-level coverage and governance claims require a separate future assessment."
+  ],
+  "last_reviewed": "2026-07-02"
+}
